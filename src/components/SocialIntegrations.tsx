@@ -31,17 +31,11 @@ export const SocialIntegrations: React.FC<Props> = ({
 
   const selectedConfig = configs.find((c) => c.platform === activePlatform) || configs[0];
 
+  const CENTRAL_GATEWAY_URL = "https://ai-shop-agent.onrender.com";
+
   const getCleanWebhookUrl = (plat: string, currentUrl?: string) => {
-    if (typeof window !== "undefined") {
-      // If running inside desktop app or local environment
-      if (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") {
-        return `http://localhost:3000/api/webhook/${plat}`;
-      }
-      if (!currentUrl || currentUrl.includes("shop-agent-gateway.com") || currentUrl.startsWith("/api/webhook")) {
-        return `${window.location.origin}/api/webhook/${plat}`;
-      }
-    }
-    return currentUrl || `/api/webhook/${plat}`;
+    // Return permanent production central cloud gateway URL
+    return `${CENTRAL_GATEWAY_URL}/api/webhook/${plat}`;
   };
 
   const [webhookUrl, setWebhookUrl] = useState(() => getCleanWebhookUrl(selectedConfig.platform, selectedConfig.webhookUrl));
@@ -431,37 +425,20 @@ export const SocialIntegrations: React.FC<Props> = ({
                 className={`w-full bg-[#FFFFFF] border border-[#CBD5E1] rounded-lg px-3 py-2 text-[#0F172A] font-mono focus:outline-none ${currentTheme.focusBorder} transition-colors shadow-xs`}
               />
               
-              {/* Desktop HTTPS Notice / Tunnel Helper */}
-              {webhookUrl.startsWith("http://localhost") && (
-                <div className="mt-2.5 p-3 rounded-lg bg-amber-50 border border-amber-200 text-[#78350F]">
-                  <div className="flex items-start space-x-2">
-                    <span className="text-sm leading-none mt-0.5">💡</span>
-                    <div className="space-y-1">
-                      <p className="font-semibold text-[11px] text-amber-900">
-                        Facebook/Meta requires a live public HTTPS URL (localhost is not accessible by Meta).
-                      </p>
-                      <p className="text-[11px] text-amber-800 leading-relaxed">
-                        To connect your Windows Desktop software with Facebook in 10 seconds:
-                      </p>
-                      <div className="flex items-center space-x-2 mt-1.5">
-                        <code className="bg-amber-100/80 px-2 py-1 rounded border border-amber-300 font-mono text-[11px] text-amber-950 select-all">
-                          npx localtunnel --port 3000
-                        </code>
-                        <button
-                          type="button"
-                          onClick={() => handleCopy("npx localtunnel --port 3000", "tunnel-cmd")}
-                          className="px-2 py-1 text-[10px] bg-amber-200 hover:bg-amber-300 text-amber-900 font-semibold rounded transition-colors cursor-pointer"
-                        >
-                          {copiedKey === "tunnel-cmd" ? "Copied Command" : "Copy Command"}
-                        </button>
-                      </div>
-                      <p className="text-[10px] text-amber-700 mt-1">
-                        Run this command in CMD. It will give you a free HTTPS link (e.g. <span className="font-mono">https://xxxx.loca.lt</span>). Replace <span className="font-mono">http://localhost:3000</span> with that link in Facebook!
-                      </p>
-                    </div>
+              {/* Central 24/7 Cloud Gateway Notice */}
+              <div className="mt-2.5 p-3 rounded-lg bg-emerald-50 border border-emerald-200 text-[#065F46]">
+                <div className="flex items-start space-x-2">
+                  <span className="text-sm leading-none mt-0.5">🚀</span>
+                  <div className="space-y-1">
+                    <p className="font-semibold text-[11px] text-emerald-900">
+                      Permanent 24/7 Cloud Gateway Webhook (Meta-Ready)
+                    </p>
+                    <p className="text-[11px] text-emerald-800 leading-relaxed">
+                      এই পার্মানেন্ট HTTPS Webhook লিঙ্কটি সরাসরি ফেসবুকে বসিয়ে <strong>"Verify and Save"</strong> বাটনে ক্লিক করলেই ১ সেকেন্ডে ভেরিফাই হয়ে যাবে। কোনো CMD বা জটিলতা প্রয়োজন নেই!
+                    </p>
                   </div>
                 </div>
-              )}
+              </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
