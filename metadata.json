@@ -1,0 +1,6 @@
+{
+  "name": "AI Shop Agent - Desktop and Server Suite",
+  "description": "AI-Powered Automated Sales & Customer Service Agent desktop application for Windows with multi-tenant product isolation, social integrations, dynamic schema catalog, and Gemini auto-reply.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

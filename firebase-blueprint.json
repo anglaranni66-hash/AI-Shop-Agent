@@ -1,0 +1,106 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "Registered shop tenant user account",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "shop_name": { "type": "string" },
+        "email": { "type": "string" },
+        "password": { "type": "string" },
+        "business_category": { "type": "string" },
+        "created_at": { "type": "string" }
+      },
+      "required": ["id", "email"]
+    },
+    "Product": {
+      "title": "Product",
+      "description": "Store inventory product item",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "price": { "type": "number" },
+        "category": { "type": "string" },
+        "stock": { "type": "number" },
+        "description": { "type": "string" },
+        "image_url": { "type": "string" },
+        "created_at": { "type": "string" }
+      },
+      "required": ["id", "name", "price"]
+    },
+    "Notification": {
+      "title": "Notification",
+      "description": "Escalation, order, and system notification alerts",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "category": { "type": "string" },
+        "title": { "type": "string" },
+        "customerName": { "type": "string" },
+        "platform": { "type": "string" },
+        "isRead": { "type": "boolean" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "category", "title"]
+    },
+    "ChatbotReply": {
+      "title": "ChatbotReply",
+      "description": "Logged live chatbot webhook event",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "platform": { "type": "string" },
+        "customerName": { "type": "string" },
+        "incomingText": { "type": "string" },
+        "aiReply": { "type": "string" },
+        "responderType": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "platform"]
+    },
+    "CustomerThread": {
+      "title": "CustomerThread",
+      "description": "Persistent customer conversation thread with memory and rolling summary for multi-day continuity",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "customerId": { "type": "string" },
+        "customerName": { "type": "string" },
+        "platform": { "type": "string" },
+        "phone": { "type": "string" },
+        "address": { "type": "string" },
+        "summary": { "type": "string" },
+        "lastMessageSnippet": { "type": "string" },
+        "lastMessageAt": { "type": "string" },
+        "totalMessages": { "type": "number" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "customerId", "platform"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "Tenant user profile"
+    },
+    "/users/{userId}/products/{productId}": {
+      "schema": "Product",
+      "description": "Products belonging to a shop owner"
+    },
+    "/users/{userId}/notifications/{notificationId}": {
+      "schema": "Notification",
+      "description": "Notification log items"
+    },
+    "/users/{userId}/chatbot_replies/{replyId}": {
+      "schema": "ChatbotReply",
+      "description": "Recent webhook and chatbot reply logs"
+    },
+    "/users/{userId}/customer_threads/{threadId}": {
+      "schema": "CustomerThread",
+      "description": "Persistent multi-day customer conversation history and memory summary"
+    }
+  }
+}
