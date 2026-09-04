@@ -639,6 +639,84 @@ app.post("/api/social/disconnect", (req, res) => {
   res.json({ success: true, message: `${platform} চ্যানেল সফলভাবে ডিসকানেক্ট করা হয়েছে।` });
 });
 
+// 1-Click Facebook Page Discovery: Fetch all Facebook Pages belonging to the user token or page token
+app.post("/api/social/facebook/pages", async (req, res) => {
+  try {
+    const { userToken = "", accessToken = "" } = req.body;
+    const effectiveToken = String(userToken || accessToken || "").trim();
+
+    if (!effectiveToken) {
+      return res.status(400).json({
+        success: false,
+        error: "User Access Token বা Facebook Token প্রদান করা আবশ্যক।",
+      });
+    }
+
+    // Attempt 1: Call Meta Graph API to list all pages the user manages (User Access Token)
+    const accountsUrl = `https://graph.facebook.com/v19.0/me/accounts?fields=id,name,category,access_token,picture{url},tasks&access_token=${encodeURIComponent(effectiveToken)}`;
+    const accountsRes = await fetch(accountsUrl);
+    const accountsData: any = await accountsRes.json();
+
+    if (accountsRes.ok && Array.isArray(accountsData.data) && accountsData.data.length > 0) {
+      const pages = accountsData.data.map((p: any) => ({
+        id: p.id,
+        name: p.name,
+        category: p.category || "Business Page",
+        accessToken: p.access_token || effectiveToken,
+        pictureUrl: p.picture?.data?.url || "",
+      }));
+
+      return res.json({
+        success: true,
+        pages,
+        count: pages.length,
+      });
+    }
+
+    // Attempt 2: If me/accounts failed or returned 0 items, check if the token is a direct Page Access Token
+    const meUrl = `https://graph.facebook.com/v19.0/me?fields=id,name,category,picture{url}&access_token=${encodeURIComponent(effectiveToken)}`;
+    const meRes = await fetch(meUrl);
+    const meData: any = await meRes.json();
+
+    if (meRes.ok && meData.id) {
+      // Direct Page token or User Profile
+      const pages = [{
+        id: meData.id,
+        name: meData.name || "Facebook Business Page",
+        category: meData.category || "Facebook Page",
+        accessToken: effectiveToken,
+        pictureUrl: meData.picture?.data?.url || "",
+      }];
+
+      return res.json({
+        success: true,
+        pages,
+        count: 1,
+      });
+    }
+
+    // Both attempts failed: return exact Meta error message
+    const metaError = accountsData.error?.message || meData.error?.message || "মেটা গ্রাফ এপিআই থেকে পেজ তথ্য পাওয়া যায়নি।";
+    const metaCode = accountsData.error?.code || meData.error?.code;
+
+    return res.status(400).json({
+      success: false,
+      error: `মেটা এপিআই ত্রুটি: ${metaError}`,
+      details: metaCode === 190 
+        ? "টোকেনটির মেয়াদ শেষ হয়ে গেছে (Expired Token)। Graph API Explorer থেকে নতুন টোকেন জেনারেট করুন।"
+        : "টোকেনটি সঠিক কিনা এবং pages_show_list / pages_messaging অনুমতি দেওয়া আছে কিনা চেক করুন।",
+      rawError: accountsData.error || meData.error,
+    });
+  } catch (err: any) {
+    console.error("[Facebook Pages Discovery Error]:", err);
+    return res.status(500).json({
+      success: false,
+      error: "ফেসবুক পেজ তালিকা ফেচ করতে সার্ভার ত্রুটি হয়েছে।",
+      details: err?.message || String(err),
+    });
+  }
+});
+
 // Get recent inbound webhook events for a tenant
 app.get("/api/social/events", (req, res) => {
   const tenantId = req.query.tenant_id as string | undefined;
@@ -808,6 +886,182 @@ app.post(["/api/webhook/whatsapp", "/webhook/whatsapp"], (req, res) => {
 
 app.post(["/api/webhook/tiktok", "/webhook/tiktok"], (req, res) => {
   res.status(200).json({ code: 0, message: "success" });
+});
+
+app.get("/oauth-callback.html", (req, res) => {
+  res.send(`<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Authenticating Facebook...</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      margin: 0;
+      background: #f8fafc;
+      color: #0f172a;
+    }
+    .card {
+      text-align: center;
+      padding: 24px;
+      background: #ffffff;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    }
+    .spinner {
+      width: 32px;
+      height: 32px;
+      border: 3px solid #e2e8f0;
+      border-top-color: #1877f2;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 16px;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="spinner"></div>
+    <h3>ফেসবুক অথেনটিকেশন সম্পন্ন হচ্ছে...</h3>
+    <p style="color: #64748b; font-size: 13px;">উইন্ডোটি স্বয়ংক্রিয়ভাবে বন্ধ হয়ে যাবে।</p>
+  </div>
+  <script>
+    try {
+      const hash = window.location.hash.substring(1);
+      const params = new URLSearchParams(hash);
+      const accessToken = params.get('access_token');
+      
+      if (accessToken) {
+        if (window.opener) {
+          window.opener.postMessage({ type: 'FB_OAUTH_TOKEN', accessToken }, '*');
+          setTimeout(() => window.close(), 800);
+        } else {
+          localStorage.setItem('fb_oauth_token_handoff', accessToken);
+          setTimeout(() => window.close(), 1000);
+        }
+      } else {
+        const urlParams = new URLSearchParams(window.location.search);
+        const error = urlParams.get('error_description') || urlParams.get('error');
+        if (error && window.opener) {
+          window.opener.postMessage({ type: 'FB_OAUTH_ERROR', error }, '*');
+        }
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  </script>
+</body>
+</html>`);
+});
+
+// =========================================================================
+// Meta Developer App Compliance Pages (Privacy Policy, Terms, Data Deletion)
+// =========================================================================
+app.get(["/privacy-policy", "/privacy"], (req, res) => {
+  res.send(`<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Privacy Policy - AI Shop Agent</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; line-height: 1.6; padding: 32px 20px; max-width: 800px; margin: auto; color: #1e293b; background: #f8fafc; }
+    .container { background: #ffffff; padding: 40px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+    h1 { color: #0f172a; border-bottom: 2px solid #e2e8f0; padding-bottom: 12px; margin-top: 0; }
+    h2 { color: #1e293b; margin-top: 24px; }
+    p, li { color: #475569; font-size: 15px; }
+    .badge { display: inline-block; background: #e0f2fe; color: #0369a1; padding: 4px 12px; border-radius: 999px; font-weight: 600; font-size: 12px; margin-bottom: 16px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="badge">Official Privacy Policy</div>
+    <h1>Privacy Policy for AI Shop Agent</h1>
+    <p><strong>Effective Date:</strong> January 1, 2026</p>
+    <p>AI Shop Agent ("we", "our", or "us") provides conversational AI and automated customer sales support services for Facebook Pages, WhatsApp Business, and Instagram accounts.</p>
+    
+    <h2>1. Information We Collect</h2>
+    <p>When you connect your Facebook Page to our application, we only receive and process customer messages sent directly to your authorized Facebook Page for the purpose of generating automated replies and logging orders.</p>
+    
+    <h2>2. How We Use Data</h2>
+    <ul>
+      <li>To process customer inquiries and provide immediate product catalog assistance.</li>
+      <li>To notify shop administrators about pending customer orders.</li>
+      <li>We do NOT sell, lease, or distribute your private business messages or customer details to third parties.</li>
+    </ul>
+
+    <h2>3. Data Deletion</h2>
+    <p>You can request complete deletion of your page data and message history at any time by disconnecting your channel in the application settings or visiting our Data Deletion page.</p>
+
+    <h2>4. Contact Us</h2>
+    <p>For any privacy concerns, contact support at <strong>support@aishopagent.com</strong>.</p>
+  </div>
+</body>
+</html>`);
+});
+
+app.get(["/terms", "/terms-of-service"], (req, res) => {
+  res.send(`<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Terms of Service - AI Shop Agent</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; line-height: 1.6; padding: 32px 20px; max-width: 800px; margin: auto; color: #1e293b; background: #f8fafc; }
+    .container { background: #ffffff; padding: 40px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+    h1 { color: #0f172a; border-bottom: 2px solid #e2e8f0; padding-bottom: 12px; margin-top: 0; }
+    h2 { color: #1e293b; margin-top: 24px; }
+    p, li { color: #475569; font-size: 15px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Terms of Service</h1>
+    <p><strong>Effective Date:</strong> January 1, 2026</p>
+    <p>By connecting your Meta business assets to AI Shop Agent, you agree to comply with Meta's Commercial Terms and use our AI automation in good faith for customer engagement and order fulfillment.</p>
+    <h2>Permitted Use</h2>
+    <p>Our service is designed to automate e-commerce catalog responses and store inquiries.</p>
+  </div>
+</body>
+</html>`);
+});
+
+app.get(["/data-deletion", "/data-deletion-instructions"], (req, res) => {
+  res.send(`<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>User Data Deletion Instructions - AI Shop Agent</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; line-height: 1.6; padding: 32px 20px; max-width: 800px; margin: auto; color: #1e293b; background: #f8fafc; }
+    .container { background: #ffffff; padding: 40px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+    h1 { color: #0f172a; border-bottom: 2px solid #e2e8f0; padding-bottom: 12px; margin-top: 0; }
+    h2 { color: #1e293b; margin-top: 24px; }
+    p, li { color: #475569; font-size: 15px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>User Data Deletion Instructions</h1>
+    <p>According to Meta Platform rules, you can remove your activities from our application at any time:</p>
+    <ol>
+      <li>Go to your Facebook Account's <strong>Settings & Privacy > Settings</strong>.</li>
+      <li>Click on <strong>Business Integrations</strong> or <strong>Apps and Websites</strong>.</li>
+      <li>Find <strong>AI Shop Agent</strong> and click <strong>Remove</strong>.</li>
+      <li>To request full purge from our servers, simply email <strong>support@aishopagent.com</strong> with your Page ID.</li>
+    </ol>
+  </div>
+</body>
+</html>`);
 });
 
 // Health check & Webhook Diagnostic Status

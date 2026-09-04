@@ -47,7 +47,8 @@ export default function App() {
       const sanitized: Record<string, SocialConfig[]> = {};
       for (const [tId, cfgs] of Object.entries(parsed)) {
         sanitized[tId] = cfgs.map((c) => {
-          if (c.isConnected && !c.verifiedAt && (!c.pageId || !c.accessToken || c.accessToken.includes("...") || c.pageId === "104928192841029")) {
+          const hasRealCreds = Boolean(c.pageId && c.accessToken && c.pageId.trim() !== "" && c.accessToken.trim() !== "" && !c.accessToken.includes("..."));
+          if (!hasRealCreds || !c.isConnected) {
             return { ...c, isConnected: false, lastSync: "Not connected" };
           }
           return c;

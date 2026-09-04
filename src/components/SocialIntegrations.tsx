@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { SocialConfig, TenantUser } from "../types";
 import {
   CheckCircle,
@@ -11,6 +11,13 @@ import {
   Share2,
   Loader2,
   AlertCircle,
+  Sparkles,
+  ChevronDown,
+  ChevronUp,
+  Building2,
+  Zap,
+  ExternalLink,
+  Trash2,
 } from "lucide-react";
 
 interface Props {
@@ -18,6 +25,14 @@ interface Props {
   currentTenant: TenantUser;
   onUpdateConfig: (updated: SocialConfig) => void;
   onSimulateIncomingWebhook: (platform: "facebook" | "instagram" | "whatsapp" | "tiktok") => void;
+}
+
+interface DiscoveredPage {
+  id: string;
+  name: string;
+  category: string;
+  accessToken: string;
+  pictureUrl?: string;
 }
 
 export const SocialIntegrations: React.FC<Props> = ({
@@ -39,7 +54,11 @@ export const SocialIntegrations: React.FC<Props> = ({
   };
 
   const [webhookUrl, setWebhookUrl] = useState(() => getCleanWebhookUrl(selectedConfig.platform, selectedConfig.webhookUrl));
-  const [verifyToken, setVerifyToken] = useState(selectedConfig.verifyToken || "shop_agent_secret_handshake_fb");
+  const [verifyToken, setVerifyToken] = useState(
+    selectedConfig.verifyToken && selectedConfig.verifyToken.startsWith("aishopagent")
+      ? selectedConfig.verifyToken
+      : "aishopagent_secret_token_2025"
+  );
   const [pageId, setPageId] = useState(selectedConfig.pageId || "");
   const [accessToken, setAccessToken] = useState(selectedConfig.accessToken || "");
   const [savedSuccess, setSavedSuccess] = useState(false);
@@ -47,51 +66,208 @@ export const SocialIntegrations: React.FC<Props> = ({
   const [verificationError, setVerificationError] = useState<string | null>(selectedConfig.verificationError || null);
   const [verificationSuccess, setVerificationSuccess] = useState<string | null>(null);
 
+  // 1-Click Page Auto Discovery state
+  const DEFAULT_META_APP_ID = "2748431182224268";
+  const [appIdInput, setAppIdInput] = useState(() => {
+    const saved = localStorage.getItem("meta_app_id");
+    if (!saved || saved.length < 10 || saved === "1211245858746878") {
+      localStorage.setItem("meta_app_id", DEFAULT_META_APP_ID);
+      return DEFAULT_META_APP_ID;
+    }
+    return saved;
+  });
+  const [userTokenInput, setUserTokenInput] = useState("");
+  const [isFetchingPages, setIsFetchingPages] = useState(false);
+  const [isSdkLoggingIn, setIsSdkLoggingIn] = useState(false);
+  const [discoveredPages, setDiscoveredPages] = useState<DiscoveredPage[]>([]);
+  const [showManualSetup, setShowManualSetup] = useState(false);
+  const [showAppIdModal, setShowAppIdModal] = useState(false);
+  const [diagnosticsResult, setDiagnosticsResult] = useState<{ status: "ok" | "error"; message: string } | null>(null);
+
+  // Initialize Facebook JS SDK & message listener for OAuth popup handoff
+  useEffect(() => {
+    localStorage.setItem("meta_app_id", DEFAULT_META_APP_ID);
+
+    // Global listener for OAuth callback window
+    const handleAuthMessage = (event: MessageEvent) => {
+      if (event.data && event.data.type === "FB_OAUTH_TOKEN" && event.data.accessToken) {
+        setIsSdkLoggingIn(false);
+        const token = event.data.accessToken;
+        setUserTokenInput(token);
+        setAccessToken(token);
+        handleFetchUserPages(token);
+      } else if (event.data && event.data.type === "FB_OAUTH_ERROR") {
+        setIsSdkLoggingIn(false);
+        setVerificationError(`Facebook Login Error: ${event.data.error || "অনুমোদন পাওয়া যায়নি।"}`);
+      }
+    };
+
+    window.addEventListener("message", handleAuthMessage);
+
+    // Check localStorage handoff periodically if opened in separate window
+    const interval = setInterval(() => {
+      const handoffToken = localStorage.getItem("fb_oauth_token_handoff");
+      if (handoffToken) {
+        localStorage.removeItem("fb_oauth_token_handoff");
+        setIsSdkLoggingIn(false);
+        setUserTokenInput(handoffToken);
+        setAccessToken(handoffToken);
+        handleFetchUserPages(handoffToken);
+      }
+    }, 1000);
+
+    if (typeof window !== "undefined" && !document.getElementById("facebook-jssdk")) {
+      const script = document.createElement("script");
+      script.id = "facebook-jssdk";
+      script.src = "https://connect.facebook.net/en_US/sdk.js";
+      script.async = true;
+      script.defer = true;
+      script.crossOrigin = "anonymous";
+      document.body.appendChild(script);
+    }
+
+    return () => {
+      window.removeEventListener("message", handleAuthMessage);
+      clearInterval(interval);
+    };
+  }, []);
+
+  const handleFbSdkLogin = () => {
+    const effectiveAppId = DEFAULT_META_APP_ID;
+    localStorage.setItem("meta_app_id", effectiveAppId);
+    setIsSdkLoggingIn(true);
+    setVerificationError(null);
+
+    const redirectUri = window.location.hostname.includes("onrender.com")
+      ? `${window.location.origin}/oauth-callback.html`
+      : "https://ai-shop-agent.onrender.com/oauth-callback.html";
+    const scopes = "pages_show_list,pages_messaging,pages_read_engagement,pages_manage_metadata,public_profile";
+    const oauthUrl = `https://www.facebook.com/v19.0/dialog/oauth?client_id=${effectiveAppId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent(scopes)}&response_type=token`;
+
+    const win = window as any;
+    // If Facebook JS SDK is available and working
+    if (win.FB && typeof win.FB.login === "function") {
+      try {
+        win.FB.init({
+          appId: effectiveAppId,
+          cookie: true,
+          xfbml: true,
+          version: "v19.0",
+        });
+
+        win.FB.login(
+          (response: any) => {
+            setIsSdkLoggingIn(false);
+            if (response.authResponse && response.authResponse.accessToken) {
+              const token = response.authResponse.accessToken;
+              setUserTokenInput(token);
+              setAccessToken(token);
+              handleFetchUserPages(token);
+            } else {
+              // If SDK login was dismissed, try direct popup window fallback
+              const popup = window.open(oauthUrl, "facebook_login", "width=600,height=750,top=100,left=100");
+              if (!popup) {
+                setVerificationError("পপ-আপ উইন্ডো ব্লক করা হয়েছে। অনুগ্রহ করে ব্রাউজারে পপ-আপ অনুমতি দিন অথবা নতুন ট্যাবে অ্যাপটি ওপেন করুন।");
+              }
+            }
+          },
+          {
+            scope: scopes,
+            return_scopes: true,
+          }
+        );
+        return;
+      } catch (err: any) {
+        console.warn("FB SDK init failed, falling back to popup:", err);
+      }
+    }
+
+    // Direct OAuth Popup fallback (works inside iframes & all browsers)
+    const popup = window.open(oauthUrl, "facebook_login", "width=600,height=750,top=100,left=100");
+    if (!popup) {
+      setIsSdkLoggingIn(false);
+      setVerificationError("পপ-আপ উইন্ডোটি ব্লক করা হয়েছে। ব্রাউজারের পপ-আপ অ্যালাও করুন বা নতুন ট্যাবে অ্যাপটি খুলুন।");
+    }
+  };
+
   const handleSelectPlatform = (p: "facebook" | "instagram" | "whatsapp" | "tiktok") => {
     setActivePlatform(p);
     const cfg = configs.find((c) => c.platform === p) || configs[0];
     setWebhookUrl(getCleanWebhookUrl(p, cfg.webhookUrl));
-    setVerifyToken(cfg.verifyToken || `shop_agent_secret_handshake_${p.slice(0, 2)}`);
+    setVerifyToken(
+      cfg.verifyToken && cfg.verifyToken.startsWith("aishopagent")
+        ? cfg.verifyToken
+        : "aishopagent_secret_token_2025"
+    );
     setPageId(cfg.pageId || "");
     setAccessToken(cfg.accessToken || "");
     setSavedSuccess(false);
     setVerificationError(cfg.verificationError || null);
     setVerificationSuccess(null);
+    setDiscoveredPages([]);
   };
 
-  const handleSave = async (e: React.FormEvent) => {
-    e.preventDefault();
+  // 1-Click Fetch All Facebook Pages
+  const handleFetchUserPages = async (tokenToUse?: string) => {
+    const effectiveToken = (tokenToUse || userTokenInput || accessToken).trim();
+    if (!effectiveToken) {
+      setVerificationError("ফেসবুক পেজ তালিকা লোড করতে আপনার মেটা টোকেন প্রদান করুন।");
+      return;
+    }
+
+    setIsFetchingPages(true);
     setVerificationError(null);
-    setVerificationSuccess(null);
-    setSavedSuccess(false);
 
-    const cleanPageId = pageId.trim();
-    const cleanToken = accessToken.trim();
-    const cleanVerifyToken = verifyToken.trim() || "shop_agent_secret_handshake_fb";
+    try {
+      const res = await fetch("/api/social/facebook/pages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ accessToken: effectiveToken }),
+      });
 
-    // 1. Client-side validation: Both Page ID and Token are required
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        setVerificationError(data.error || "ফেসবুক পেজ লোড করা যায়নি। টোকেনটি সঠিক কিনা চেক করুন।");
+        setDiscoveredPages([]);
+      } else if (Array.isArray(data.pages) && data.pages.length > 0) {
+        setDiscoveredPages(data.pages);
+        setVerificationSuccess(`আপনার অ্যাকাউন্টের ${data.pages.length}টি ফেসবুক পেজ সফলভাবে পাওয়া গেছে! নিচের তালিকা থেকে আপনার পেজটি সিলেক্ট করুন।`);
+      } else {
+        setVerificationError("এই টোকেনের অধীনে কোনো ফেসবুক পেজ পাওয়া যায়নি। নিশ্চিত করুন আপনার আইডিতে পেজ অ্যাডমিন রোল রয়েছে।");
+        setDiscoveredPages([]);
+      }
+    } catch (err: any) {
+      setVerificationError("সার্ভার থেকে পেজ তালিকা আনা যায়নি। ইন্টারনেট কানেকশন চেক করুন।");
+    } finally {
+      setIsFetchingPages(false);
+    }
+  };
+
+  // 1-Click Connect a Discovered Page
+  const handleConnectDiscoveredPage = async (page: DiscoveredPage) => {
+    setPageId(page.id);
+    setAccessToken(page.accessToken);
+    await executeVerification(page.id, page.accessToken, verifyToken);
+  };
+
+  const executeVerification = async (targetPageId: string, targetToken: string, targetVerifyToken: string) => {
+    const cleanPageId = targetPageId.trim();
+    const cleanToken = targetToken.trim();
+    const cleanVerifyToken = targetVerifyToken.trim() || "aishopagent_secret_token_2025";
+
     if (!cleanPageId || !cleanToken) {
       const err = activePlatform === "facebook"
-        ? "Facebook Page ID এবং Page Access Token পূরণ করা আবশ্যক। ভুল বা খালি ক্রেডেনশিয়াল দিলে কানেক্ট করা সম্ভব নয়।"
+        ? "Facebook Page ID এবং Page Access Token পূরণ করা আবশ্যক।"
         : "Page ID এবং Access Token পূরণ করা আবশ্যক।";
       setVerificationError(err);
-      onUpdateConfig({
-        ...selectedConfig,
-        webhookUrl,
-        verifyToken: cleanVerifyToken,
-        pageId: cleanPageId,
-        accessToken: cleanToken,
-        isConnected: false,
-        verificationError: err,
-        lastSync: "Verification failed (Missing fields)",
-      });
       return;
     }
 
     setIsVerifying(true);
+    setVerificationError(null);
+    setVerificationSuccess(null);
 
     try {
-      // 2. Call backend Meta Graph API verification endpoint (locally or via central gateway)
       const verifyPayload = {
         platform: activePlatform,
         pageId: cleanPageId,
@@ -101,7 +277,6 @@ export const SocialIntegrations: React.FC<Props> = ({
         shopName: currentTenant?.shopName || "Our Store",
       };
 
-      // Verify on current host
       const response = await fetch("/api/social/verify", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -110,7 +285,7 @@ export const SocialIntegrations: React.FC<Props> = ({
 
       const data = await response.json();
 
-      // Also proactively register with Central Cloud Gateway if running locally/on desktop
+      // Proactively sync to central cloud gateway
       if (typeof window !== "undefined" && !window.location.origin.includes("onrender.com")) {
         try {
           await fetch(`${CENTRAL_GATEWAY_URL}/api/social/verify`, {
@@ -124,7 +299,6 @@ export const SocialIntegrations: React.FC<Props> = ({
       }
 
       if (!response.ok || !data.success) {
-        // Verification failed! Show exact error and keep isConnected = false
         const errorMessage = data.details || data.error || "মেটা গ্রাফ এপিআই যাচাইকরণ ব্যর্থ হয়েছে।";
         setVerificationError(errorMessage);
         onUpdateConfig({
@@ -138,9 +312,8 @@ export const SocialIntegrations: React.FC<Props> = ({
           lastSync: `Verification failed (${new Date().toLocaleTimeString()})`,
         });
       } else {
-        // Verification succeeded!
         const pageName = data.page?.name || (activePlatform === "facebook" ? "Facebook Business Page" : "Channel Page");
-        const successMessage = data.message || `মেটা গ্রাফ এপিআই ভেরিফিকেশন সফল! "${pageName}" পেজের সাথে কানেক্ট হয়েছে।`;
+        const successMessage = data.message || `মেটা গ্রাফ এপিআই ভেরিফিকেশন সফল! "${pageName}" পেজের সাথে স্বয়ংক্রিয়ভাবে কানেক্ট হয়েছে।`;
         
         setVerificationSuccess(successMessage);
         setSavedSuccess(true);
@@ -165,23 +338,19 @@ export const SocialIntegrations: React.FC<Props> = ({
       console.error("Verification network error:", netErr);
       const netMsg = "সার্ভারের সাথে সংযোগ করা যায়নি। আপনার ইন্টারনেট সংযোগ চেক করুন।";
       setVerificationError(netMsg);
-      onUpdateConfig({
-        ...selectedConfig,
-        webhookUrl,
-        verifyToken: cleanVerifyToken,
-        pageId: cleanPageId,
-        accessToken: cleanToken,
-        isConnected: false,
-        verificationError: netMsg,
-        lastSync: "Connection error",
-      });
     } finally {
       setIsVerifying(false);
     }
   };
 
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await executeVerification(pageId, accessToken, verifyToken);
+  };
+
   const handleDisconnect = async () => {
     setIsVerifying(true);
+    setDiagnosticsResult(null);
     try {
       await fetch("/api/social/disconnect", {
         method: "POST",
@@ -192,17 +361,74 @@ export const SocialIntegrations: React.FC<Props> = ({
         }),
       });
 
+      setPageId("");
+      setAccessToken("");
+      setUserTokenInput("");
+      setDiscoveredPages([]);
+
       onUpdateConfig({
         ...selectedConfig,
+        pageId: "",
+        accessToken: "",
+        pageName: undefined,
         isConnected: false,
         verificationError: undefined,
+        verifiedAt: undefined,
         lastSync: `Disconnected at ${new Date().toLocaleTimeString()}`,
       });
       setVerificationSuccess(`${selectedConfig.name} চ্যানেলটি ডিসকানেক্ট করা হয়েছে।`);
       setVerificationError(null);
-      setTimeout(() => setVerificationSuccess(null), 3000);
+      setTimeout(() => setVerificationSuccess(null), 4000);
     } catch (e) {
       console.error("Disconnect error:", e);
+    } finally {
+      setIsVerifying(false);
+    }
+  };
+
+  const handleRunLiveDiagnostics = async () => {
+    if (!selectedConfig.pageId || !selectedConfig.accessToken) {
+      setDiagnosticsResult({
+        status: "error",
+        message: "কোনো Page ID বা Token পাওয়া যায়নি। অনুগ্রহ করে পেজ কানেক্ট করুন।",
+      });
+      return;
+    }
+
+    setIsVerifying(true);
+    setDiagnosticsResult(null);
+
+    try {
+      const response = await fetch("/api/social/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          platform: activePlatform,
+          pageId: selectedConfig.pageId,
+          accessToken: selectedConfig.accessToken,
+          verifyToken: selectedConfig.verifyToken,
+          tenantId: currentTenant?.id || "default",
+          shopName: currentTenant?.shopName || "Our Store",
+        }),
+      });
+
+      const data = await response.json();
+      if (response.ok && data.success) {
+        setDiagnosticsResult({
+          status: "ok",
+          message: `✅ লাইভ পিং সফল! মেটা এপিআই ও ফেসবুক পেজ (${data.page?.name || selectedConfig.pageName || selectedConfig.pageId}) সক্রিয়ভাবে সংযুক্ত রয়েছে। ক্লাউড ওয়েবহুক সাবস্ক্রিপশন চালু আছে।`,
+        });
+      } else {
+        setDiagnosticsResult({
+          status: "error",
+          message: `❌ মেটা পিং ব্যর্থ: ${data.details || data.error || "টোকেনটি অবৈধ বা মেয়াদোত্তীর্ণ হতে পারে।"}`
+        });
+      }
+    } catch (err: any) {
+      setDiagnosticsResult({
+        status: "error",
+        message: `সার্ভার সংযোগ ত্রুটি: ${err.message || String(err)}`
+      });
     } finally {
       setIsVerifying(false);
     }
@@ -415,7 +641,230 @@ export const SocialIntegrations: React.FC<Props> = ({
 
         {/* Form Body */}
         <div className="p-6">
-          <form onSubmit={handleSave} className="space-y-4 text-xs">
+          {/* Active Connection & Live Diagnostics Status Card */}
+          <div className="mb-6 p-4 rounded-xl border bg-white shadow-xs">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
+              <div className="flex items-center space-x-3">
+                <div className={`w-3.5 h-3.5 rounded-full ${selectedConfig.isConnected ? "bg-emerald-500 animate-pulse" : "bg-slate-300"}`} />
+                <div>
+                  <div className="text-xs font-bold text-slate-900 flex items-center space-x-2">
+                    <span>কানেকশন স্ট্যাটাস:</span>
+                    {selectedConfig.isConnected ? (
+                      <span className="text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded text-[11px] font-semibold">
+                        🟢 লাইভ সংযুক্ত (Connected)
+                      </span>
+                    ) : (
+                      <span className="text-slate-600 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded text-[11px] font-medium">
+                        ⚪ ডিসকানেক্টেড (Not Connected)
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-[11px] text-slate-500 mt-0.5">
+                    {selectedConfig.isConnected ? (
+                      <span>পেজের নাম: <strong className="text-slate-800">{selectedConfig.pageName || selectedConfig.name}</strong> • ID: <span className="font-mono">{selectedConfig.pageId}</span></span>
+                    ) : (
+                      <span>কোনো পেজ বর্তমানে কানেক্ট করা নেই। নিচের ১-ক্লিক অপশন দিয়ে কানেক্ট করুন।</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Action Buttons for Connected Page */}
+              {selectedConfig.isConnected && (
+                <div className="flex items-center space-x-2 shrink-0">
+                  <button
+                    type="button"
+                    id="btn-run-diagnostics"
+                    disabled={isVerifying}
+                    onClick={handleRunLiveDiagnostics}
+                    className="bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 text-xs font-semibold px-3 py-1.5 rounded-lg flex items-center space-x-1.5 transition-all cursor-pointer disabled:opacity-50"
+                  >
+                    {isVerifying ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Zap className="w-3.5 h-3.5" />}
+                    <span>লাইভ ডায়াগনস্টিক টেস্ট</span>
+                  </button>
+                  <button
+                    type="button"
+                    id="btn-disconnect-social-page"
+                    disabled={isVerifying}
+                    onClick={handleDisconnect}
+                    className="bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 text-xs font-semibold px-3 py-1.5 rounded-lg flex items-center space-x-1.5 transition-all cursor-pointer disabled:opacity-50"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>ডিসকানেক্ট করুন</span>
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Diagnostics result banner */}
+            {diagnosticsResult && (
+              <div className={`mt-3 p-3 rounded-lg text-xs font-medium ${
+                diagnosticsResult.status === "ok"
+                  ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
+                  : "bg-red-50 text-red-800 border border-red-200"
+              }`}>
+                {diagnosticsResult.message}
+              </div>
+            )}
+          </div>
+
+          {/* 1-Click Auto-Discovery Card for Facebook */}
+          {activePlatform === "facebook" && (
+            <div className="mb-6 p-4 sm:p-5 bg-gradient-to-br from-blue-50/90 to-indigo-50/60 border border-blue-200/80 rounded-xl shadow-xs">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+                <div className="flex items-center space-x-2.5">
+                  <div className="w-9 h-9 rounded-lg bg-[#1877F2] text-white flex items-center justify-center shadow-xs">
+                    <Zap className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-[#0F172A] text-sm flex items-center space-x-2">
+                      <span>১-ক্লিকে ফেসবুক পেজ কানেক্ট (Facebook 1-Click Connect)</span>
+                      <span className="bg-[#1877F2]/10 text-[#1877F2] text-[10px] px-2 py-0.5 rounded-full font-semibold">Official SDK</span>
+                    </h4>
+                    <p className="text-[#64748B] text-[11px] mt-0.5">
+                      বড় কোম্পানিদের মতো সরাসরি ফেসবুক লগইন পপ-আপের মাধ্যমে পেজ সিলেক্ট করুন অথবা ১-ক্লিকে পেজ লোড করুন।
+                    </p>
+                  </div>
+                </div>
+
+                {/* Direct 1-Click Facebook Popup Login Button */}
+                <div className="flex flex-col items-end gap-1 shrink-0">
+                  <button
+                    type="button"
+                    id="btn-fb-sdk-login"
+                    disabled={isSdkLoggingIn}
+                    onClick={handleFbSdkLogin}
+                    className="bg-[#1877F2] hover:bg-[#166FE5] active:scale-[0.98] text-white text-xs font-bold px-4 py-2.5 rounded-xl flex items-center justify-center space-x-2 shadow-sm transition-all cursor-pointer disabled:opacity-50"
+                  >
+                    {isSdkLoggingIn ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
+                        <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                      </svg>
+                    )}
+                    <span>{isSdkLoggingIn ? "ফেসবুকে কানেক্ট হচ্ছে..." : "🔵 Continue with Facebook"}</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Or Quick Graph API Token Option */}
+              <div className="pt-2 border-t border-blue-200/60 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+                <div className="text-slate-600 text-[11px]">
+                  অথবা মেটা টোকেন থাকলে নিচে পেস্ট করে আপনার সব পেজ এক ক্লিকে লোড করুন:
+                </div>
+                <a
+                  href="https://developers.facebook.com/tools/explorer/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[#1877F2] hover:underline font-semibold text-[11px] flex items-center space-x-1 shrink-0"
+                >
+                  <span>🔗 মেটা থেকে টোকেন কপি করুন (Graph Explorer)</span>
+                  <ExternalLink className="w-3 h-3" />
+                </a>
+              </div>
+
+              {/* Token input & Fetch button */}
+              <div className="flex flex-col sm:flex-row gap-2 mt-2.5">
+                <div className="relative flex-1">
+                  <input
+                    id="input-discovery-token"
+                    type="password"
+                    value={userTokenInput || accessToken}
+                    onChange={(e) => {
+                      setUserTokenInput(e.target.value);
+                      setAccessToken(e.target.value);
+                    }}
+                    placeholder="মেটা টোকেন পেস্ট করুন (EAA...)..."
+                    className="w-full bg-[#FFFFFF] border border-blue-200 rounded-lg pl-3 pr-8 py-2 text-[#0F172A] text-xs font-mono focus:outline-none focus:border-[#1877F2] shadow-xs"
+                  />
+                </div>
+                <button
+                  type="button"
+                  id="btn-fetch-my-pages"
+                  disabled={isFetchingPages}
+                  onClick={() => handleFetchUserPages()}
+                  className="bg-slate-800 hover:bg-slate-900 text-white text-xs font-semibold px-4 py-2 rounded-lg flex items-center justify-center space-x-2 shadow-xs transition-all cursor-pointer disabled:opacity-50 shrink-0"
+                >
+                  {isFetchingPages ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Building2 className="w-3.5 h-3.5" />}
+                  <span>{isFetchingPages ? "পেজ খোঁজা হচ্ছে..." : "🔍 আমার সব পেজ লোড করুন"}</span>
+                </button>
+              </div>
+
+              {/* Discovered Pages List */}
+              {discoveredPages.length > 0 && (
+                <div className="mt-4 space-y-2.5">
+                  <div className="text-[11px] font-bold text-blue-900 flex items-center justify-between">
+                    <span>আপনার অ্যাকাউন্টের পেজসমূহ ({discoveredPages.length}টি পাওয়া গেছে):</span>
+                    <span className="text-slate-500 font-normal">যেকোনো একটি পেজ বেছে কানেক্ট বাটনে চাপুন</span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    {discoveredPages.map((p) => {
+                      const isThisConnected = selectedConfig.isConnected && selectedConfig.pageId === p.id;
+                      return (
+                        <div
+                          key={p.id}
+                          className={`p-3 rounded-xl border transition-all flex items-center justify-between ${
+                            isThisConnected
+                              ? "bg-emerald-50/80 border-emerald-300 ring-1 ring-emerald-200 shadow-xs"
+                              : "bg-[#FFFFFF] border-blue-100 hover:border-blue-300 shadow-xs"
+                          }`}
+                        >
+                          <div className="flex items-center space-x-2.5 min-w-0 mr-2">
+                            {p.pictureUrl ? (
+                              <img src={p.pictureUrl} alt={p.name} className="w-8 h-8 rounded-full object-cover border border-slate-200 shrink-0" />
+                            ) : (
+                              <div className="w-8 h-8 rounded-full bg-blue-100 text-[#1877F2] flex items-center justify-center font-bold text-xs shrink-0">
+                                {p.name.charAt(0)}
+                              </div>
+                            )}
+                            <div className="min-w-0">
+                              <div className="font-bold text-[#0F172A] text-xs truncate">{p.name}</div>
+                              <div className="text-[10px] text-slate-500 truncate">ID: {p.id} • {p.category}</div>
+                            </div>
+                          </div>
+
+                          <button
+                            type="button"
+                            id={`btn-connect-page-${p.id}`}
+                            disabled={isVerifying}
+                            onClick={() => handleConnectDiscoveredPage(p)}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center space-x-1.5 transition-all cursor-pointer shrink-0 ${
+                              isThisConnected
+                                ? "bg-emerald-600 text-white shadow-xs hover:bg-emerald-700"
+                                : "bg-[#1877F2] hover:bg-[#166FE5] text-white shadow-xs"
+                            }`}
+                          >
+                            {isVerifying ? (
+                              <Loader2 className="w-3 h-3 animate-spin" />
+                            ) : isThisConnected ? (
+                              <Check className="w-3 h-3" />
+                            ) : (
+                              <Zap className="w-3 h-3" />
+                            )}
+                            <span>{isThisConnected ? "সংযুক্ত আছে" : "⚡ কানেক্ট করুন"}</span>
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          <div className="mb-4">
+            <button
+              type="button"
+              onClick={() => setShowManualSetup(!showManualSetup)}
+              className="text-xs font-semibold text-slate-600 hover:text-slate-900 flex items-center space-x-1.5 cursor-pointer py-1"
+            >
+              <span>{showManualSetup ? "ম্যানুয়াল ক্রেডেনশিয়াল সেটিংস লুকান" : "⚙️ ম্যানুয়াল ক্রেডেনশিয়াল ও Webhook URLs দেখুন"}</span>
+              {showManualSetup ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+            </button>
+          </div>
+
+          <form onSubmit={handleSave} className={`space-y-4 text-xs ${!showManualSetup && activePlatform === "facebook" ? "hidden" : "block"}`}>
             {/* Webhook URL */}
             <div>
               <label className="block text-[#334155] font-semibold mb-1.5 flex items-center justify-between">

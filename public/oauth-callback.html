@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Authenticating Facebook...</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      margin: 0;
+      background: #f8fafc;
+      color: #0f172a;
+    }
+    .card {
+      text-align: center;
+      padding: 24px;
+      background: #ffffff;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    }
+    .spinner {
+      width: 32px;
+      height: 32px;
+      border: 3px solid #e2e8f0;
+      border-top-color: #1877f2;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 16px;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="spinner"></div>
+    <h3>ফেসবুক অথেনটিকেশন সম্পন্ন হচ্ছে...</h3>
+    <p style="color: #64748b; font-size: 13px;">উইন্ডোটি স্বয়ংক্রিয়ভাবে বন্ধ হয়ে যাবে।</p>
+  </div>
+  <script>
+    try {
+      const hash = window.location.hash.substring(1);
+      const params = new URLSearchParams(hash);
+      const accessToken = params.get('access_token');
+      
+      if (accessToken) {
+        if (window.opener) {
+          window.opener.postMessage({ type: 'FB_OAUTH_TOKEN', accessToken }, '*');
+          setTimeout(() => window.close(), 800);
+        } else {
+          // If no opener, store in localStorage for tab polling
+          localStorage.setItem('fb_oauth_token_handoff', accessToken);
+          setTimeout(() => window.close(), 1000);
+        }
+      } else {
+        const urlParams = new URLSearchParams(window.location.search);
+        const error = urlParams.get('error_description') || urlParams.get('error');
+        if (error && window.opener) {
+          window.opener.postMessage({ type: 'FB_OAUTH_ERROR', error }, '*');
+        }
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  </script>
+</body>
+</html>
