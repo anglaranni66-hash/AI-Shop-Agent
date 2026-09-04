@@ -91,21 +91,37 @@ export const SocialIntegrations: React.FC<Props> = ({
     setIsVerifying(true);
 
     try {
-      // 2. Call backend Meta Graph API verification endpoint
+      // 2. Call backend Meta Graph API verification endpoint (locally or via central gateway)
+      const verifyPayload = {
+        platform: activePlatform,
+        pageId: cleanPageId,
+        accessToken: cleanToken,
+        verifyToken: cleanVerifyToken,
+        tenantId: currentTenant?.id || "default",
+        shopName: currentTenant?.shopName || "Our Store",
+      };
+
+      // Verify on current host
       const response = await fetch("/api/social/verify", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          platform: activePlatform,
-          pageId: cleanPageId,
-          accessToken: cleanToken,
-          verifyToken: cleanVerifyToken,
-          tenantId: currentTenant?.id || "default",
-          shopName: currentTenant?.shopName || "Our Store",
-        }),
+        body: JSON.stringify(verifyPayload),
       });
 
       const data = await response.json();
+
+      // Also proactively register with Central Cloud Gateway if running locally/on desktop
+      if (typeof window !== "undefined" && !window.location.origin.includes("onrender.com")) {
+        try {
+          await fetch(`${CENTRAL_GATEWAY_URL}/api/social/verify`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(verifyPayload),
+          });
+        } catch (cloudSyncErr) {
+          console.warn("Central cloud gateway sync notice:", cloudSyncErr);
+        }
+      }
 
       if (!response.ok || !data.success) {
         // Verification failed! Show exact error and keep isConnected = false

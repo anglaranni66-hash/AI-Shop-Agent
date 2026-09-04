@@ -341,6 +341,35 @@ interface ActiveChannelConfig {
 
 const activeChannels = new Map<string, ActiveChannelConfig>();
 const recentWebhookEvents: any[] = [];
+const CHANNELS_BACKUP_FILE = path.join(process.cwd(), ".channels_cache.json");
+
+// Load persisted channels on startup
+try {
+  if (fs.existsSync(CHANNELS_BACKUP_FILE)) {
+    const raw = fs.readFileSync(CHANNELS_BACKUP_FILE, "utf-8");
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) {
+      parsed.forEach((c: ActiveChannelConfig) => {
+        if (c.platform && (c.pageId || c.tenantId)) {
+          if (c.tenantId) activeChannels.set(`${c.platform}:${c.tenantId}`, c);
+          if (c.pageId) activeChannels.set(`${c.platform}:${c.pageId}`, c);
+        }
+      });
+      console.log(`[Channels Persistence] Restored ${activeChannels.size} active channel configs from cache.`);
+    }
+  }
+} catch (loadErr) {
+  console.warn("[Channels Persistence Load Error]:", loadErr);
+}
+
+function saveChannelsToCache() {
+  try {
+    const uniqueConfigs = Array.from(new Set(activeChannels.values()));
+    fs.writeFileSync(CHANNELS_BACKUP_FILE, JSON.stringify(uniqueConfigs, null, 2), "utf-8");
+  } catch (saveErr) {
+    console.warn("[Channels Persistence Save Error]:", saveErr);
+  }
+}
 
 // Verify credentials directly with Meta Graph API
 app.post("/api/social/verify", async (req, res) => {
@@ -454,6 +483,7 @@ app.post("/api/social/verify", async (req, res) => {
 
         activeChannels.set(`facebook:${tenantId}`, configData);
         activeChannels.set(`facebook:${verifiedPageId}`, configData);
+        saveChannelsToCache();
 
         return res.json({
           success: true,
@@ -506,6 +536,7 @@ app.post("/api/social/verify", async (req, res) => {
           verifiedAt: new Date().toISOString(),
         };
         activeChannels.set(`instagram:${tenantId}`, configData);
+        saveChannelsToCache();
 
         return res.json({
           success: true,
@@ -545,6 +576,7 @@ app.post("/api/social/verify", async (req, res) => {
           verifiedAt: new Date().toISOString(),
         };
         activeChannels.set(`whatsapp:${tenantId}`, configData);
+        saveChannelsToCache();
 
         return res.json({
           success: true,
@@ -578,6 +610,7 @@ app.post("/api/social/verify", async (req, res) => {
         verifiedAt: new Date().toISOString(),
       };
       activeChannels.set(`tiktok:${tenantId}`, configData);
+      saveChannelsToCache();
 
       return res.json({
         success: true,
@@ -602,6 +635,7 @@ app.post("/api/social/verify", async (req, res) => {
 app.post("/api/social/disconnect", (req, res) => {
   const { platform = "facebook", tenantId = "default" } = req.body;
   activeChannels.delete(`${platform}:${tenantId}`);
+  saveChannelsToCache();
   res.json({ success: true, message: `${platform} চ্যানেল সফলভাবে ডিসকানেক্ট করা হয়েছে।` });
 });
 
@@ -714,7 +748,11 @@ Reply in natural, polite Bengali (or English if they spoke English). Be warm, he
                     }),
                   });
                   const sendData = await sendRes.json();
-                  console.log(`[Facebook Sent Reply to ${senderPsid}]:`, sendData);
+                  if (!sendRes.ok || sendData.error) {
+                    console.error(`[Facebook Send API Error to ${senderPsid}]:`, sendData.error);
+                  } else {
+                    console.log(`[Facebook Sent Reply SUCCESS to ${senderPsid}]:`, sendData);
+                  }
                 } catch (sendErr) {
                   console.error("[Facebook Send Message Error]:", sendErr);
                 }
@@ -763,9 +801,26 @@ app.post(["/api/webhook/tiktok", "/webhook/tiktok"], (req, res) => {
   res.status(200).json({ code: 0, message: "success" });
 });
 
-// Health check
+// Health check & Webhook Diagnostic Status
 app.get("/api/health", (req, res) => {
-  res.json({ status: "ok", geminiConfigured: Boolean(process.env.GEMINI_API_KEY) });
+  const registeredChannels = Array.from(activeChannels.values()).map(c => ({
+    platform: c.platform,
+    pageId: c.pageId,
+    pageName: c.pageName,
+    shopName: c.shopName,
+    hasToken: Boolean(c.accessToken),
+    verifiedAt: c.verifiedAt
+  }));
+
+  res.json({
+    status: "ok",
+    timestamp: new Date().toISOString(),
+    geminiConfigured: Boolean(process.env.GEMINI_API_KEY),
+    activeChannelsCount: activeChannels.size,
+    registeredChannels,
+    totalEventsProcessed: recentWebhookEvents.length,
+    recentEvents: recentWebhookEvents.slice(0, 5)
+  });
 });
 
 // =========================================================================
