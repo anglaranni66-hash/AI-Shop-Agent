@@ -125,7 +125,7 @@ INSTRUCTION: Reply directly to the customer as an expert human sales representat
 
     const aiClient = getGeminiClient();
     let replyText = "";
-    let modelUsed = "gemini-3.5-flash";
+    let modelUsed = "gemini-flash-latest";
     let systemAlert: any = null;
 
     if (!aiClient) {
@@ -685,7 +685,7 @@ app.post(["/api/webhook/facebook", "/webhook/facebook"], async (req, res) => {
               if (aiClient && (customerText || imageUrl)) {
                 try {
                   const genRes = await aiClient.models.generateContent({
-                    model: "gemini-3.5-flash",
+                    model: "gemini-flash-latest",
                     contents: `You are the official friendly human sales representative for the Bangladeshi store "${channel?.shopName || "Our Store"}".
 Customer on Facebook Messenger says: "${customerText || "Image sent"}".
 Reply in natural, polite Bengali (or English if they spoke English). Be warm, helpful, concise, and professional:`,
@@ -698,10 +698,13 @@ Reply in natural, polite Bengali (or English if they spoke English). Be warm, he
                 }
               }
 
+              // Access token from active channel or environment variable
+              const effectiveToken = channel?.accessToken || process.env.FB_PAGE_ACCESS_TOKEN || process.env.PAGE_ACCESS_TOKEN;
+
               // Send reply back to customer via Facebook Send API
-              if (channel?.accessToken && aiReply) {
+              if (effectiveToken && aiReply) {
                 try {
-                  const sendUrl = `https://graph.facebook.com/v19.0/me/messages?access_token=${encodeURIComponent(channel.accessToken)}`;
+                  const sendUrl = `https://graph.facebook.com/v19.0/me/messages?access_token=${encodeURIComponent(effectiveToken)}`;
                   const sendRes = await fetch(sendUrl, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
