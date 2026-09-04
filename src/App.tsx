@@ -260,6 +260,37 @@ export default function App() {
       });
       setHasLoadedLogsFromCloud((prev) => ({ ...prev, [currentTenant.id]: true }));
       setLastLogsFetchedAt(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+      // Also fetch live events from server endpoint
+      try {
+        const eventsRes = await fetch(`/api/social/events?tenant_id=${encodeURIComponent(currentTenant.id)}`);
+        if (eventsRes.ok) {
+          const eventsData = await eventsRes.json();
+          if (Array.isArray(eventsData.events) && eventsData.events.length > 0) {
+            eventsData.events.forEach((ev: any) => {
+              if (!cloudLogs.some((l) => l.id === ev.id)) {
+                cloudLogs.push({
+                  id: ev.id,
+                  platform: ev.platform || "facebook",
+                  customerName: ev.customerName || "Customer",
+                  customerPhone: ev.customerPhone || "",
+                  incomingText: ev.incomingText || "",
+                  imageUrl: ev.imageUrl || "",
+                  aiReply: ev.aiReply || "",
+                  replyImageUrl: ev.replyImageUrl || "",
+                  responderType: ev.responderType || "ai",
+                  responderName: ev.responderName || "Gemini AI Agent",
+                  latencyMs: Number(ev.latencyMs) || 0,
+                  timestamp: ev.timestamp || "Just now",
+                  createdAt: ev.createdAt || new Date().toISOString(),
+                  isDemo: false,
+                });
+              }
+            });
+          }
+        }
+      } catch (evtErr) {
+        console.debug("[Live Server Events Poll Notice]:", evtErr);
+      }
     } catch (err) {
       console.debug("[Firestore Chatbot Replies Fetch Error]:", err);
     } finally {
