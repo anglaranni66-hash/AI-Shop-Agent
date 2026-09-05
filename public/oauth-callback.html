@@ -60,10 +60,40 @@
         document.getElementById('spinner').style.display = 'none';
         document.getElementById('heading').innerText = '✅ ফেসবুক অনুমোদন সফল হয়েছে!';
         document.getElementById('heading').style.color = '#15803d';
-        document.getElementById('subtext').innerText = 'আপনার পেজের তথ্য ট্রান্সফার করা হচ্ছে, অনুগ্রহ করে অপেক্ষা করুন...';
+        document.getElementById('subtext').innerText = 'সার্ভারে পেজ তথ্য ভেরিফাই ও কানেক্ট করা হচ্ছে, অনুগ্রহ করে অপেক্ষা করুন...';
         document.getElementById('close-btn').style.display = 'inline-block';
 
-        // Method A: PostMessage to opener
+        // Extract tenantId from state or query params if present
+        const tenantId = hashParams.get('state') || new URLSearchParams(window.location.search).get('state') || localStorage.getItem('active_tenant_id') || 'default';
+
+        // 1. Send directly to Backend Server API (Reliable across ALL iframes, sandboxes, and domains)
+        fetch('/api/social/oauth-callback', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ accessToken, tenantId })
+        })
+        .then(res => res.json())
+        .then(data => {
+          console.log('[Server Handshake Response]:', data);
+          if (data.autoConnected && data.connectedPage) {
+            document.getElementById('heading').innerText = '🎉 পেজ সফলভাবে কানেক্ট হয়েছে!';
+            document.getElementById('subtext').innerText = `পেজ: "${data.connectedPage.name}" কানেক্ট সম্পন্ন! উইন্ডো বন্ধ হচ্ছে...`;
+          } else if (data.pages && data.pages.length > 0) {
+            document.getElementById('heading').innerText = '✅ পেজ তালিকা তৈরি হয়েছে!';
+            document.getElementById('subtext').innerText = `${data.pages.length}টি পেজ লোড হয়েছে। উইন্ডো বন্ধ হচ্ছে...`;
+          }
+          setTimeout(() => {
+            window.close();
+          }, 1200);
+        })
+        .catch(err => {
+          console.error('[Server Handshake Error]:', err);
+          setTimeout(() => {
+            window.close();
+          }, 1500);
+        });
+
+        // 2. Client-side fallbacks (postMessage, BroadcastChannel, localStorage)
         try {
           if (window.opener) {
             window.opener.postMessage({ type: 'FB_OAUTH_TOKEN', accessToken }, '*');
@@ -75,7 +105,6 @@
           console.warn('Opener postMessage error:', err);
         }
 
-        // Method B: BroadcastChannel (cross-tab / cross-frame)
         try {
           const bc = new BroadcastChannel('fb_oauth_handoff_channel');
           bc.postMessage({ type: 'FB_OAUTH_TOKEN', accessToken });
@@ -83,7 +112,6 @@
           console.warn('BroadcastChannel error:', err);
         }
 
-        // Method C: LocalStorage / SessionStorage handoff
         try {
           localStorage.setItem('fb_oauth_token_handoff', accessToken);
           localStorage.setItem('fb_oauth_token_time', String(Date.now()));
@@ -91,11 +119,6 @@
         } catch (err) {
           console.warn('LocalStorage error:', err);
         }
-
-        // Close after a short delay so parent has time to receive
-        setTimeout(() => {
-          window.close();
-        }, 1200);
       } else {
         const urlParams = new URLSearchParams(window.location.search);
         const error = urlParams.get('error_description') || urlParams.get('error');

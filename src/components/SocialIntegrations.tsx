@@ -126,6 +126,81 @@ export const SocialIntegrations: React.FC<Props> = ({
       console.warn("BroadcastChannel not supported:", e);
     }
 
+    // Server-side OAuth Polling & Cross-Sandbox Bridge (Polls server every 700ms)
+    const serverPollInterval = setInterval(async () => {
+      try {
+        const tenantId = currentTenant?.id || "default";
+        const res = await fetch(`/api/social/oauth-status?tenant_id=${encodeURIComponent(tenantId)}`);
+        if (!res.ok) return;
+        const data = await res.json();
+
+        if (data && data.hasSession) {
+          if (data.autoConnected && data.connectedPage) {
+            setIsSdkLoggingIn(false);
+            setPageId(data.connectedPage.id);
+            setAccessToken(data.connectedPage.accessToken);
+            setSavedSuccess(true);
+            setVerificationError(null);
+            setVerificationSuccess(`🎉 ফেসবুক পেজ "${data.connectedPage.name}" সফলভাবে কানেক্ট হয়েছে এবং মেসেঞ্জার স্বয়ংক্রিয়ভাবে সক্রিয় করা হয়েছে!`);
+            onUpdateConfig({
+              ...selectedConfig,
+              isConnected: true,
+              pageId: data.connectedPage.id,
+              pageName: data.connectedPage.name,
+              accessToken: data.connectedPage.accessToken,
+              lastSync: "Just now",
+            });
+            if (Array.isArray(data.pages)) {
+              setDiscoveredPages(data.pages);
+            }
+            // Clear session so it only triggers once
+            fetch("/api/social/oauth-clear", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ tenant_id: tenantId }),
+            }).catch(() => {});
+          } else if (Array.isArray(data.pages) && data.pages.length > 0) {
+            setIsSdkLoggingIn(false);
+            setDiscoveredPages(data.pages);
+            if (data.accessToken) {
+              setUserTokenInput(data.accessToken);
+              setAccessToken(data.accessToken);
+            }
+            setVerificationSuccess(`আপনার ${data.pages.length}টি ফেসবুক পেজ পাওয়া গেছে! নিচে থেকে কানেক্ট করুন।`);
+            fetch("/api/social/oauth-clear", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ tenant_id: tenantId }),
+            }).catch(() => {});
+          }
+        }
+      } catch (pollErr) {
+        // Quiet failure during background poll
+      }
+    }, 700);
+
+    // Initial sync with server's active channel configuration
+    const tenantId = currentTenant?.id || "default";
+    fetch(`/api/social/status?platform=facebook&tenant_id=${encodeURIComponent(tenantId)}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.isConnected && data.channel) {
+          if (!selectedConfig.isConnected || selectedConfig.pageId !== data.channel.pageId) {
+            setPageId(data.channel.pageId);
+            setAccessToken(data.channel.accessToken);
+            onUpdateConfig({
+              ...selectedConfig,
+              isConnected: true,
+              pageId: data.channel.pageId,
+              pageName: data.channel.pageName,
+              accessToken: data.channel.accessToken,
+              lastSync: "Just now",
+            });
+          }
+        }
+      })
+      .catch(() => {});
+
     // Check localStorage handoff periodically (polls every 350ms)
     const interval = setInterval(() => {
       const handoffToken = localStorage.getItem("fb_oauth_token_handoff");
@@ -152,8 +227,9 @@ export const SocialIntegrations: React.FC<Props> = ({
       window.removeEventListener("message", handleAuthMessage);
       if (bc) bc.close();
       clearInterval(interval);
+      clearInterval(serverPollInterval);
     };
-  }, []);
+  }, [currentTenant?.id, selectedConfig.isConnected, selectedConfig.pageId]);
 
   const handleFbSdkLogin = () => {
     const effectiveAppId = (appIdInput || localStorage.getItem("meta_app_id") || DEFAULT_META_APP_ID).trim();
@@ -165,7 +241,8 @@ export const SocialIntegrations: React.FC<Props> = ({
     // Use current origin so BroadcastChannel, localStorage, and postMessage are 100% same-origin
     const redirectUri = `${window.location.origin}/oauth-callback.html`;
     const scopes = "pages_show_list,pages_messaging,pages_manage_metadata,public_profile";
-    const oauthUrl = `https://www.facebook.com/v19.0/dialog/oauth?client_id=${effectiveAppId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent(scopes)}&response_type=token`;
+    const tenantId = currentTenant?.id || "default";
+    const oauthUrl = `https://www.facebook.com/v19.0/dialog/oauth?client_id=${effectiveAppId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent(scopes)}&response_type=token&state=${encodeURIComponent(tenantId)}`;
 
     const win = window as any;
     // If Facebook JS SDK is available and working
@@ -685,7 +762,7 @@ export const SocialIntegrations: React.FC<Props> = ({
                     ? "bg-emerald-600 text-white ring-4 ring-emerald-100"
                     : "bg-slate-100 text-slate-400"
                 }`}>
-                  {selectedConfig.isConnected ? <CheckCircle2 className="w-6 h-6" /> : <Building2 className="w-5 h-5" />}
+                  {selectedConfig.isConnected ? <CheckCircle className="w-6 h-6" /> : <Building2 className="w-5 h-5" />}
                 </div>
 
                 <div>

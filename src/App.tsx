@@ -107,7 +107,7 @@ export default function App() {
             const data = docSnap.data();
             const platforms = ["facebook", "instagram", "whatsapp", "tiktok"] as const;
             let hasAnySocial = false;
-            const currentList = tenantSocialConfigs[currentTenant.id] || INITIAL_SOCIAL_CONFIGS;
+            const currentList = tenantSocialConfigs[currentTenant.id] || INITIAL_SOCIAL_CONFIGS.default || [];
             const updatedList = currentList.map((cfg) => {
               const cloudCfg = data[`social_config_${cfg.platform}`];
               if (cloudCfg) {

@@ -799,6 +799,203 @@ app.post("/api/social/facebook/pages", async (req, res) => {
   }
 });
 
+// Pending OAuth sessions buffer for cross-window / cross-iframe / server-side handoff
+interface PendingOAuthSession {
+  accessToken: string;
+  tenantId: string;
+  pages: any[];
+  autoConnected?: boolean;
+  connectedPage?: any;
+  timestamp: number;
+}
+const pendingOAuthSessions = new Map<string, PendingOAuthSession>();
+
+// Server-side OAuth Callback: Received directly from oauth-callback.html popup window
+app.post("/api/social/oauth-callback", async (req, res) => {
+  try {
+    const { accessToken, tenantId = "default" } = req.body;
+    const cleanToken = String(accessToken || "").trim();
+
+    if (!cleanToken) {
+      return res.status(400).json({ success: false, error: "Access token is required." });
+    }
+
+    console.log(`[OAuth Callback Server] Received access token for tenant "${tenantId}". Resolving Meta Graph API accounts...`);
+
+    // 1. Fetch all Facebook Pages the user manages using User Access Token
+    let pages: any[] = [];
+    try {
+      const accountsUrl = `https://graph.facebook.com/v19.0/me/accounts?fields=id,name,category,access_token,picture{url},tasks&access_token=${encodeURIComponent(cleanToken)}`;
+      const accountsRes = await fetch(accountsUrl);
+      const accountsData: any = await accountsRes.json();
+
+      if (accountsRes.ok && Array.isArray(accountsData.data) && accountsData.data.length > 0) {
+        pages = accountsData.data.map((p: any) => ({
+          id: p.id,
+          name: p.name,
+          category: p.category || "Business Page",
+          accessToken: p.access_token || cleanToken,
+          pictureUrl: p.picture?.data?.url || "",
+        }));
+      }
+    } catch (accErr) {
+      console.warn("[OAuth Callback me/accounts Warning]:", accErr);
+    }
+
+    // 2. Fallback: If me/accounts returned empty, check me profile
+    if (pages.length === 0) {
+      try {
+        const meUrl = `https://graph.facebook.com/v19.0/me?fields=id,name,category,picture{url}&access_token=${encodeURIComponent(cleanToken)}`;
+        const meRes = await fetch(meUrl);
+        const meData: any = await meRes.json();
+        if (meRes.ok && meData.id) {
+          pages.push({
+            id: meData.id,
+            name: meData.name || "Facebook Business Page",
+            category: meData.category || "Facebook Page",
+            accessToken: cleanToken,
+            pictureUrl: meData.picture?.data?.url || "",
+          });
+        }
+      } catch (meErr) {
+        console.warn("[OAuth Callback me Warning]:", meErr);
+      }
+    }
+
+    let autoConnected = false;
+    let connectedPage: any = null;
+
+    // 3. If pages exist, automatically connect and subscribe the page to webhooks!
+    if (pages.length > 0) {
+      const targetPage = pages[0];
+      const verifiedPageId = targetPage.id;
+      const verifiedPageName = targetPage.name;
+      const verifiedToken = targetPage.accessToken || cleanToken;
+
+      // Automatically subscribe this Facebook Page to webhook messages
+      let webhookSubscribed = false;
+      try {
+        const subUrl = `https://graph.facebook.com/v19.0/${encodeURIComponent(verifiedPageId)}/subscribed_apps?subscribed_fields=messages,messaging_postbacks,message_reads&access_token=${encodeURIComponent(verifiedToken)}`;
+        const subRes = await fetch(subUrl, { method: "POST" });
+        const subJson: any = await subRes.json();
+        webhookSubscribed = Boolean(subJson.success);
+        console.log(`[OAuth Auto-Subscribe Webhook to ${verifiedPageName}]:`, subJson);
+      } catch (subErr) {
+        console.warn("[OAuth Auto-Subscribe Webhook Warning]:", subErr);
+      }
+
+      const configData: ActiveChannelConfig = {
+        tenantId,
+        platform: "facebook",
+        pageId: verifiedPageId,
+        accessToken: verifiedToken,
+        verifyToken: "shop_agent_secret_handshake_fb",
+        pageName: verifiedPageName,
+        category: targetPage.category || "E-commerce",
+        shopName: "Our Store",
+        verifiedAt: new Date().toISOString(),
+      };
+
+      activeChannels.set(`facebook:${tenantId}`, configData);
+      activeChannels.set(`facebook:${verifiedPageId}`, configData);
+      saveChannelsToCache();
+
+      autoConnected = true;
+      connectedPage = {
+        id: verifiedPageId,
+        name: verifiedPageName,
+        category: targetPage.category,
+        accessToken: verifiedToken,
+        verifiedAt: configData.verifiedAt,
+        webhookSubscribed,
+      };
+
+      console.log(`[OAuth Callback Server] SUCCESS: Auto-connected Facebook Page "${verifiedPageName}" (${verifiedPageId})`);
+    }
+
+    const sessionPayload: PendingOAuthSession = {
+      accessToken: cleanToken,
+      tenantId,
+      pages,
+      autoConnected,
+      connectedPage,
+      timestamp: Date.now(),
+    };
+
+    pendingOAuthSessions.set(tenantId, sessionPayload);
+    pendingOAuthSessions.set("latest", sessionPayload);
+
+    return res.json({
+      success: true,
+      autoConnected,
+      connectedPage,
+      pages,
+      count: pages.length,
+      message: autoConnected
+        ? `ফেসবুক পেজ "${connectedPage.name}" সফলভাবে কানেক্ট হয়েছে!`
+        : `ফেসবুক অনুমোদন সম্পন্ন হয়েছে।`,
+    });
+  } catch (err: any) {
+    console.error("[OAuth Callback Server Exception]:", err);
+    return res.status(500).json({ success: false, error: err.message || "OAuth processing failed." });
+  }
+});
+
+// Check OAuth status (UI in iframe polls this to receive OAuth handoff data seamlessly)
+app.get("/api/social/oauth-status", (req, res) => {
+  const tenantId = (req.query.tenant_id as string) || "default";
+  const session = pendingOAuthSessions.get(tenantId) || pendingOAuthSessions.get("latest");
+  const activeChannel = activeChannels.get(`facebook:${tenantId}`) || Array.from(activeChannels.values()).find((c) => c.platform === "facebook");
+
+  if (session && Date.now() - session.timestamp < 180000) {
+    return res.json({
+      hasSession: true,
+      autoConnected: Boolean(session.autoConnected),
+      connectedPage: session.connectedPage,
+      pages: session.pages || [],
+      accessToken: session.accessToken,
+      activeChannel: activeChannel || null,
+    });
+  }
+
+  return res.json({
+    hasSession: false,
+    activeChannel: activeChannel || null,
+  });
+});
+
+// Clear consumed OAuth session
+app.post("/api/social/oauth-clear", (req, res) => {
+  const tenantId = (req.body?.tenant_id as string) || "default";
+  pendingOAuthSessions.delete(tenantId);
+  pendingOAuthSessions.delete("latest");
+  res.json({ success: true });
+});
+
+// Check channel connection status for any platform
+app.get("/api/social/status", (req, res) => {
+  const tenantId = (req.query.tenant_id as string) || "default";
+  const platform = (req.query.platform as string) || "facebook";
+  const channel = activeChannels.get(`${platform}:${tenantId}`) || Array.from(activeChannels.values()).find((c) => c.platform === platform);
+
+  if (channel && channel.pageId && channel.accessToken) {
+    return res.json({
+      isConnected: true,
+      channel: {
+        platform: channel.platform,
+        pageId: channel.pageId,
+        pageName: channel.pageName,
+        category: channel.category,
+        shopName: channel.shopName,
+        verifiedAt: channel.verifiedAt,
+        accessToken: channel.accessToken,
+      },
+    });
+  }
+
+  return res.json({ isConnected: false, channel: null });
+});
+
 // Get recent inbound webhook events for a tenant
 app.get("/api/social/events", (req, res) => {
   const tenantId = req.query.tenant_id as string | undefined;
