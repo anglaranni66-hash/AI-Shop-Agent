@@ -356,6 +356,29 @@ export const AuthScreen: React.FC<Props> = ({ onLogin, tenants, onRegister }) =>
             </button>
           </form>
         )}
+
+        {/* Legal Business Footer for Meta Compliance */}
+        <div className="mt-6 pt-4 border-t border-[#E2E8F0] text-center text-[11px] text-[#64748B] space-y-1">
+          <p className="font-medium text-[#334155]">
+            Operated by <strong>MD. RIFAT HOSSAIN</strong> (Brand: AI Shop Agent)
+          </p>
+          <p className="text-[10px] text-[#94A3B8]">
+            Address: Dhawrah, Shailkupa, Jhenaidah, Khulna - 7320, Bangladesh
+          </p>
+          <div className="flex items-center justify-center space-x-3 pt-1 text-[11px] text-blue-600">
+            <a href="/privacy-policy.html" target="_blank" rel="noopener noreferrer" className="hover:underline">
+              Privacy Policy
+            </a>
+            <span>•</span>
+            <a href="/terms-of-service.html" target="_blank" rel="noopener noreferrer" className="hover:underline">
+              Terms of Service
+            </a>
+            <span>•</span>
+            <a href="/data-deletion.html" target="_blank" rel="noopener noreferrer" className="hover:underline">
+              Data Deletion
+            </a>
+          </div>
+        </div>
       </div>
     </div>
   );

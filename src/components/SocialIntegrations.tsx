@@ -1219,6 +1219,24 @@ export const SocialIntegrations: React.FC<Props> = ({
               ))}
             </ol>
           </div>
+
+          {/* Legal Business Footer for Meta Verification */}
+          <div className="mt-6 pt-4 border-t border-[#E2E8F0] flex flex-col md:flex-row items-center justify-between text-[11px] text-[#64748B] gap-2">
+            <div>
+              Legal Entity: <span className="font-semibold text-[#1E293B]">MD. RIFAT HOSSAIN</span> (AI Shop Agent) • Dhawrah, Shailkupa, Jhenaidah - 7320
+            </div>
+            <div className="flex items-center space-x-3 text-blue-600 font-medium">
+              <a href="/privacy-policy.html" target="_blank" rel="noopener noreferrer" className="hover:underline flex items-center space-x-1">
+                <span>Privacy Policy</span>
+                <ExternalLink className="w-3 h-3" />
+              </a>
+              <span>•</span>
+              <a href="/terms-of-service.html" target="_blank" rel="noopener noreferrer" className="hover:underline flex items-center space-x-1">
+                <span>Terms of Service</span>
+                <ExternalLink className="w-3 h-3" />
+              </a>
+            </div>
+          </div>
         </div>
       </div>
     </div>
