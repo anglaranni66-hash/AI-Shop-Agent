@@ -1250,6 +1250,7 @@ app.get(["/privacy-policy", "/privacy", "/privacy-policy.html", "/privacy.html"]
   <meta charset="UTF-8">
   <title>Privacy Policy - AI Shop Agent</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="facebook-domain-verification" content="pcii55wnloh9batx8jaqk0u1zmy0zf" />
   <style>
     body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; line-height: 1.6; padding: 32px 20px; max-width: 800px; margin: auto; color: #1e293b; background: #f8fafc; }
     .container { background: #ffffff; padding: 40px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
@@ -1257,6 +1258,7 @@ app.get(["/privacy-policy", "/privacy", "/privacy-policy.html", "/privacy.html"]
     h2 { color: #1e293b; margin-top: 24px; }
     p, li { color: #475569; font-size: 15px; }
     .badge { display: inline-block; background: #e0f2fe; color: #0369a1; padding: 4px 12px; border-radius: 999px; font-weight: 600; font-size: 12px; margin-bottom: 16px; }
+    .legal-box { background: #f1f5f9; border-left: 4px solid #0284c7; padding: 16px; margin: 20px 0; border-radius: 0 8px 8px 0; }
   </style>
 </head>
 <body>
@@ -1264,7 +1266,16 @@ app.get(["/privacy-policy", "/privacy", "/privacy-policy.html", "/privacy.html"]
     <div class="badge">Official Privacy Policy</div>
     <h1>Privacy Policy for AI Shop Agent</h1>
     <p><strong>Effective Date:</strong> January 1, 2026</p>
-    <p>AI Shop Agent ("we", "our", or "us") provides conversational AI and automated customer sales support services for Facebook Pages, WhatsApp Business, and Instagram accounts.</p>
+    
+    <div class="legal-box">
+      <strong>Legal Entity Information:</strong><br>
+      <strong>Legal Business Name:</strong> MD. RIFAT HOSSAIN<br>
+      <strong>Operating Brand:</strong> AI Shop Agent<br>
+      <strong>Registered Address:</strong> Dhawrah, Shailkupa, Jhenaidah, Khulna - 7320, Bangladesh<br>
+      <strong>Official Contact:</strong> anglaranni66@gmail.com
+    </div>
+
+    <p>AI Shop Agent ("we", "our", or "us"), legally operated by <strong>MD. RIFAT HOSSAIN</strong>, provides conversational AI and automated customer sales support services for Facebook Pages, WhatsApp Business, and Instagram accounts.</p>
     
     <h2>1. Information We Collect</h2>
     <p>When you connect your Facebook Page to our application, we only receive and process customer messages sent directly to your authorized Facebook Page for the purpose of generating automated replies and logging orders.</p>
@@ -1280,7 +1291,7 @@ app.get(["/privacy-policy", "/privacy", "/privacy-policy.html", "/privacy.html"]
     <p>You can request complete deletion of your page data and message history at any time by disconnecting your channel in the application settings or visiting our Data Deletion page.</p>
 
     <h2>4. Contact Us</h2>
-    <p>For any privacy concerns, contact support at <strong>anglaranni66@gmail.com</strong>.</p>
+    <p>For any privacy concerns, contact <strong>MD. RIFAT HOSSAIN</strong> at <strong>anglaranni66@gmail.com</strong>.</p>
   </div>
 </body>
 </html>`);
@@ -1293,21 +1304,38 @@ app.get(["/terms", "/terms-of-service", "/terms.html", "/terms-of-service.html"]
   <meta charset="UTF-8">
   <title>Terms of Service - AI Shop Agent</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="facebook-domain-verification" content="pcii55wnloh9batx8jaqk0u1zmy0zf" />
   <style>
     body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; line-height: 1.6; padding: 32px 20px; max-width: 800px; margin: auto; color: #1e293b; background: #f8fafc; }
     .container { background: #ffffff; padding: 40px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
     h1 { color: #0f172a; border-bottom: 2px solid #e2e8f0; padding-bottom: 12px; margin-top: 0; }
     h2 { color: #1e293b; margin-top: 24px; }
     p, li { color: #475569; font-size: 15px; }
+    .badge { display: inline-block; background: #e0f2fe; color: #0369a1; padding: 4px 12px; border-radius: 999px; font-weight: 600; font-size: 12px; margin-bottom: 16px; }
+    .legal-box { background: #f1f5f9; border-left: 4px solid #0284c7; padding: 16px; margin: 20px 0; border-radius: 0 8px 8px 0; }
   </style>
 </head>
 <body>
   <div class="container">
+    <div class="badge">Official Meta Terms</div>
     <h1>Terms of Service</h1>
     <p><strong>Effective Date:</strong> January 1, 2026</p>
-    <p>By connecting your Meta business assets to AI Shop Agent, you agree to comply with Meta's Commercial Terms and use our AI automation in good faith for customer engagement and order fulfillment.</p>
-    <h2>Permitted Use</h2>
+    
+    <div class="legal-box">
+      <strong>Legal Entity Information:</strong><br>
+      <strong>Legal Business Name:</strong> MD. RIFAT HOSSAIN<br>
+      <strong>Operating Brand:</strong> AI Shop Agent<br>
+      <strong>Registered Address:</strong> Dhawrah, Shailkupa, Jhenaidah, Khulna - 7320, Bangladesh<br>
+      <strong>Official Contact:</strong> anglaranni66@gmail.com
+    </div>
+
+    <p>By connecting your Meta business assets to AI Shop Agent (operated by <strong>MD. RIFAT HOSSAIN</strong>), you agree to comply with Meta's Commercial Terms and use our AI automation in good faith for customer engagement and order fulfillment.</p>
+    
+    <h2>1. Permitted Use</h2>
     <p>Our service is designed to automate e-commerce catalog responses and store inquiries.</p>
+    
+    <h2>2. Ownership</h2>
+    <p>All intellectual property and platform assets belong to <strong>MD. RIFAT HOSSAIN</strong>.</p>
   </div>
 </body>
 </html>`);
@@ -1320,17 +1348,23 @@ app.get(["/data-deletion", "/data-deletion-instructions", "/data-deletion.html"]
   <meta charset="UTF-8">
   <title>User Data Deletion Instructions - AI Shop Agent</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="facebook-domain-verification" content="pcii55wnloh9batx8jaqk0u1zmy0zf" />
   <style>
     body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; line-height: 1.6; padding: 32px 20px; max-width: 800px; margin: auto; color: #1e293b; background: #f8fafc; }
     .container { background: #ffffff; padding: 40px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
     h1 { color: #0f172a; border-bottom: 2px solid #e2e8f0; padding-bottom: 12px; margin-top: 0; }
     h2 { color: #1e293b; margin-top: 24px; }
     p, li { color: #475569; font-size: 15px; }
+    .legal-box { background: #f1f5f9; border-left: 4px solid #0284c7; padding: 16px; margin: 20px 0; border-radius: 0 8px 8px 0; }
   </style>
 </head>
 <body>
   <div class="container">
     <h1>User Data Deletion Instructions</h1>
+    <div class="legal-box">
+      <strong>Service Provider:</strong> MD. RIFAT HOSSAIN (AI Shop Agent)<br>
+      <strong>Contact:</strong> anglaranni66@gmail.com
+    </div>
     <p>According to Meta Platform rules, you can remove your activities from our application at any time:</p>
     <ol>
       <li>Go to your Facebook Account's <strong>Settings & Privacy > Settings</strong>.</li>
