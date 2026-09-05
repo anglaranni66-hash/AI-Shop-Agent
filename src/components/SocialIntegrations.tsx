@@ -67,10 +67,11 @@ export const SocialIntegrations: React.FC<Props> = ({
   const [verificationSuccess, setVerificationSuccess] = useState<string | null>(null);
 
   // 1-Click Page Auto Discovery state
-  const DEFAULT_META_APP_ID = "2748431182224268";
+  // User's official Meta App ID: 2241054986685445 (AI Shop Agent Ltd)
+  const DEFAULT_META_APP_ID = "2241054986685445";
   const [appIdInput, setAppIdInput] = useState(() => {
     const saved = localStorage.getItem("meta_app_id");
-    if (!saved || saved.length < 10 || saved === "1211245858746878") {
+    if (!saved || saved === "2748431182224268" || saved === "1211245858746878" || saved.length < 10) {
       localStorage.setItem("meta_app_id", DEFAULT_META_APP_ID);
       return DEFAULT_META_APP_ID;
     }
@@ -86,7 +87,11 @@ export const SocialIntegrations: React.FC<Props> = ({
 
   // Initialize Facebook JS SDK & message listener for OAuth popup handoff
   useEffect(() => {
-    localStorage.setItem("meta_app_id", DEFAULT_META_APP_ID);
+    const currentAppId = localStorage.getItem("meta_app_id") || DEFAULT_META_APP_ID;
+    if (currentAppId === "2748431182224268") {
+      localStorage.setItem("meta_app_id", DEFAULT_META_APP_ID);
+      setAppIdInput(DEFAULT_META_APP_ID);
+    }
 
     // Global listener for OAuth callback window
     const handleAuthMessage = (event: MessageEvent) => {
@@ -133,7 +138,7 @@ export const SocialIntegrations: React.FC<Props> = ({
   }, []);
 
   const handleFbSdkLogin = () => {
-    const effectiveAppId = DEFAULT_META_APP_ID;
+    const effectiveAppId = (appIdInput || localStorage.getItem("meta_app_id") || DEFAULT_META_APP_ID).trim();
     localStorage.setItem("meta_app_id", effectiveAppId);
     setIsSdkLoggingIn(true);
     setVerificationError(null);
@@ -141,7 +146,7 @@ export const SocialIntegrations: React.FC<Props> = ({
     const redirectUri = window.location.hostname.includes("onrender.com")
       ? `${window.location.origin}/oauth-callback.html`
       : "https://ai-shop-agent.onrender.com/oauth-callback.html";
-    const scopes = "pages_show_list,pages_messaging,pages_read_engagement,pages_manage_metadata,public_profile";
+    const scopes = "pages_show_list,pages_messaging,pages_manage_metadata,public_profile";
     const oauthUrl = `https://www.facebook.com/v19.0/dialog/oauth?client_id=${effectiveAppId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent(scopes)}&response_type=token`;
 
     const win = window as any;

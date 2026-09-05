@@ -964,7 +964,7 @@ app.get("/oauth-callback.html", (req, res) => {
 // =========================================================================
 // Meta Developer App Compliance Pages (Privacy Policy, Terms, Data Deletion)
 // =========================================================================
-app.get(["/privacy-policy", "/privacy"], (req, res) => {
+app.get(["/privacy-policy", "/privacy", "/privacy-policy.html", "/privacy.html"], (req, res) => {
   res.send(`<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -1001,13 +1001,13 @@ app.get(["/privacy-policy", "/privacy"], (req, res) => {
     <p>You can request complete deletion of your page data and message history at any time by disconnecting your channel in the application settings or visiting our Data Deletion page.</p>
 
     <h2>4. Contact Us</h2>
-    <p>For any privacy concerns, contact support at <strong>support@aishopagent.com</strong>.</p>
+    <p>For any privacy concerns, contact support at <strong>anglaranni66@gmail.com</strong>.</p>
   </div>
 </body>
 </html>`);
 });
 
-app.get(["/terms", "/terms-of-service"], (req, res) => {
+app.get(["/terms", "/terms-of-service", "/terms.html", "/terms-of-service.html"], (req, res) => {
   res.send(`<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -1034,7 +1034,7 @@ app.get(["/terms", "/terms-of-service"], (req, res) => {
 </html>`);
 });
 
-app.get(["/data-deletion", "/data-deletion-instructions"], (req, res) => {
+app.get(["/data-deletion", "/data-deletion-instructions", "/data-deletion.html"], (req, res) => {
   res.send(`<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -1057,7 +1057,7 @@ app.get(["/data-deletion", "/data-deletion-instructions"], (req, res) => {
       <li>Go to your Facebook Account's <strong>Settings & Privacy > Settings</strong>.</li>
       <li>Click on <strong>Business Integrations</strong> or <strong>Apps and Websites</strong>.</li>
       <li>Find <strong>AI Shop Agent</strong> and click <strong>Remove</strong>.</li>
-      <li>To request full purge from our servers, simply email <strong>support@aishopagent.com</strong> with your Page ID.</li>
+      <li>To request full purge from our servers, simply email <strong>anglaranni66@gmail.com</strong> with your Page ID.</li>
     </ol>
   </div>
 </body>
