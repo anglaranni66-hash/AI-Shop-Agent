@@ -36,31 +36,79 @@
   </style>
 </head>
 <body>
-  <div class="card">
-    <div class="spinner"></div>
-    <h3>ফেসবুক অথেনটিকেশন সম্পন্ন হচ্ছে...</h3>
-    <p style="color: #64748b; font-size: 13px;">উইন্ডোটি স্বয়ংক্রিয়ভাবে বন্ধ হয়ে যাবে।</p>
+  <div class="card" id="card-box">
+    <div class="spinner" id="spinner"></div>
+    <h3 id="heading">ফেসবুক অথেনটিকেশন সম্পন্ন হচ্ছে...</h3>
+    <p id="subtext" style="color: #64748b; font-size: 13px;">উইন্ডোটি স্বয়ংক্রিয়ভাবে আপনার পেজ লোড করবে।</p>
+    <button id="close-btn" style="display:none; margin-top:12px; background:#1877f2; color:#fff; border:none; border-radius:8px; padding:8px 16px; font-weight:600; cursor:pointer;" onclick="window.close()">উইন্ডোটি বন্ধ করুন</button>
   </div>
   <script>
     try {
+      // 1. Check hash for token (implicit grant)
       const hash = window.location.hash.substring(1);
-      const params = new URLSearchParams(hash);
-      const accessToken = params.get('access_token');
-      
+      const hashParams = new URLSearchParams(hash);
+      let accessToken = hashParams.get('access_token');
+
+      // 2. Check query search for token
+      if (!accessToken) {
+        const searchParams = new URLSearchParams(window.location.search);
+        accessToken = searchParams.get('access_token');
+      }
+
       if (accessToken) {
-        if (window.opener) {
-          window.opener.postMessage({ type: 'FB_OAUTH_TOKEN', accessToken }, '*');
-          setTimeout(() => window.close(), 800);
-        } else {
-          // If no opener, store in localStorage for tab polling
-          localStorage.setItem('fb_oauth_token_handoff', accessToken);
-          setTimeout(() => window.close(), 1000);
+        // UI Success state
+        document.getElementById('spinner').style.display = 'none';
+        document.getElementById('heading').innerText = '✅ ফেসবুক অনুমোদন সফল হয়েছে!';
+        document.getElementById('heading').style.color = '#15803d';
+        document.getElementById('subtext').innerText = 'আপনার পেজের তথ্য ট্রান্সফার করা হচ্ছে, অনুগ্রহ করে অপেক্ষা করুন...';
+        document.getElementById('close-btn').style.display = 'inline-block';
+
+        // Method A: PostMessage to opener
+        try {
+          if (window.opener) {
+            window.opener.postMessage({ type: 'FB_OAUTH_TOKEN', accessToken }, '*');
+            if (window.opener.top && window.opener.top !== window.opener) {
+              window.opener.top.postMessage({ type: 'FB_OAUTH_TOKEN', accessToken }, '*');
+            }
+          }
+        } catch (err) {
+          console.warn('Opener postMessage error:', err);
         }
+
+        // Method B: BroadcastChannel (cross-tab / cross-frame)
+        try {
+          const bc = new BroadcastChannel('fb_oauth_handoff_channel');
+          bc.postMessage({ type: 'FB_OAUTH_TOKEN', accessToken });
+        } catch (err) {
+          console.warn('BroadcastChannel error:', err);
+        }
+
+        // Method C: LocalStorage / SessionStorage handoff
+        try {
+          localStorage.setItem('fb_oauth_token_handoff', accessToken);
+          localStorage.setItem('fb_oauth_token_time', String(Date.now()));
+          sessionStorage.setItem('fb_oauth_token_handoff', accessToken);
+        } catch (err) {
+          console.warn('LocalStorage error:', err);
+        }
+
+        // Close after a short delay so parent has time to receive
+        setTimeout(() => {
+          window.close();
+        }, 1200);
       } else {
         const urlParams = new URLSearchParams(window.location.search);
         const error = urlParams.get('error_description') || urlParams.get('error');
-        if (error && window.opener) {
-          window.opener.postMessage({ type: 'FB_OAUTH_ERROR', error }, '*');
+        if (error) {
+          document.getElementById('spinner').style.display = 'none';
+          document.getElementById('heading').innerText = '❌ ফেসবুক লগইন ব্যর্থ হয়েছে';
+          document.getElementById('heading').style.color = '#b91c1c';
+          document.getElementById('subtext').innerText = error;
+          document.getElementById('close-btn').style.display = 'inline-block';
+
+          if (window.opener) {
+            window.opener.postMessage({ type: 'FB_OAUTH_ERROR', error }, '*');
+          }
         }
       }
     } catch (e) {

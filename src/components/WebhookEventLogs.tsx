@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { WebhookLog, TenantUser } from "../types";
+import { WebhookLog, TenantUser, SocialConfig } from "../types";
 import {
   Radio,
   Clock,
@@ -28,11 +28,14 @@ import {
   Send,
   Cloud,
   CheckCheck,
+  SendHorizontal,
+  Loader2,
 } from "lucide-react";
 
 interface Props {
   logs: WebhookLog[];
   currentTenant: TenantUser;
+  socialConfigs?: SocialConfig[];
   onSimulateIncomingWebhook: (
     platform: "facebook" | "instagram" | "whatsapp" | "tiktok",
     options?: { withImage?: boolean; simulatedHumanReply?: boolean }
@@ -42,17 +45,20 @@ interface Props {
   lastLogsFetchedAt?: string | null;
   onDeleteLog?: (id: string) => void;
   onClearDemoLogs?: () => void;
+  onManualMessageSent?: (log: WebhookLog) => void;
 }
 
 export const WebhookEventLogs: React.FC<Props> = ({
   logs,
   currentTenant,
+  socialConfigs = [],
   onSimulateIncomingWebhook,
   onFetchCloudLogs,
   isFetchingLogs = false,
   lastLogsFetchedAt,
   onDeleteLog,
   onClearDemoLogs,
+  onManualMessageSent,
 }) => {
   const [selectedFilter, setSelectedFilter] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
@@ -63,6 +69,86 @@ export const WebhookEventLogs: React.FC<Props> = ({
   const [isDemoToolsOpen, setIsDemoToolsOpen] = useState(false);
   const [lightboxImage, setLightboxImage] = useState<{ url: string; title: string } | null>(null);
   const [now, setNow] = useState(Date.now());
+
+  // Manual Message Compose Modal State
+  const [isComposeOpen, setIsComposeOpen] = useState(false);
+  const [composeRecipient, setComposeRecipient] = useState("");
+  const [composePlatform, setComposePlatform] = useState<"facebook" | "instagram" | "whatsapp" | "tiktok">("facebook");
+  const [composeMessage, setComposeMessage] = useState("");
+  const [isSendingManual, setIsSendingManual] = useState(false);
+  const [composeStatus, setComposeStatus] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
+  const fbConfig = socialConfigs.find((c) => c.platform === "facebook");
+
+  const handleOpenCompose = (initialPlatform: "facebook" | "instagram" | "whatsapp" | "tiktok" = "facebook", recipient = "") => {
+    setComposePlatform(initialPlatform);
+    setComposeRecipient(recipient);
+    setComposeMessage("");
+    setComposeStatus(null);
+    setIsComposeOpen(true);
+  };
+
+  const handleSendManualMessage = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!composeMessage.trim()) return;
+
+    setIsSendingManual(true);
+    setComposeStatus(null);
+
+    try {
+      const activePlatformConfig = socialConfigs.find((c) => c.platform === composePlatform);
+      const res = await fetch("/api/social/send-message", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          platform: composePlatform,
+          recipientId: composeRecipient.trim() || undefined,
+          text: composeMessage.trim(),
+          tenantId: currentTenant.id,
+          pageToken: activePlatformConfig?.accessToken,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || "মেসেজ ডেলিভারি ব্যর্থ হয়েছে।");
+      }
+
+      setComposeStatus({
+        type: "success",
+        text: `মেসেজ সফলভাবে পাঠানো হয়েছে! ${composePlatform === "facebook" ? "(Facebook Messenger Handshake Complete)" : ""}`,
+      });
+
+      if (data.event && onManualMessageSent) {
+        onManualMessageSent({
+          id: data.event.id,
+          platform: composePlatform,
+          customerName: data.event.customerName,
+          incomingText: "— (Outbound Staff Message)",
+          aiReply: composeMessage.trim(),
+          responderType: "human_agent",
+          responderName: "Staff Agent (Manual)",
+          latencyMs: 120,
+          timestamp: "Just now",
+          createdAt: new Date().toISOString(),
+          isDemo: false,
+        });
+      }
+
+      setTimeout(() => {
+        setIsComposeOpen(false);
+        setComposeMessage("");
+        setComposeStatus(null);
+      }, 1200);
+    } catch (err: any) {
+      setComposeStatus({
+        type: "error",
+        text: err.message || "মেসেজ সেন্ড করতে ব্যর্থ হয়েছে।",
+      });
+    } finally {
+      setIsSendingManual(false);
+    }
+  };
 
   // Refresh clock every second to update remaining demo countdowns & auto-expire
   useEffect(() => {
@@ -208,6 +294,17 @@ export const WebhookEventLogs: React.FC<Props> = ({
 
         {/* Action Buttons */}
         <div className="flex items-center flex-wrap gap-1.5">
+          <button
+            id="btn-open-manual-compose"
+            type="button"
+            onClick={() => handleOpenCompose("facebook", "")}
+            className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-[#1877F2] bg-[#1877F2] hover:bg-[#166FE5] text-white flex items-center space-x-1.5 transition-all cursor-pointer shadow-xs"
+            title="Send manual message from connected Facebook / Messenger page"
+          >
+            <SendHorizontal className="w-3.5 h-3.5" />
+            <span>নতুন মেসেজ পাঠান (Send Message)</span>
+          </button>
+
           {onFetchCloudLogs && (
             <button
               id="btn-sync-cloud-logs"
@@ -565,6 +662,15 @@ export const WebhookEventLogs: React.FC<Props> = ({
 
                           <div className="flex items-center space-x-2">
                             <button
+                              onClick={() => handleOpenCompose(log.platform as any, log.customerName)}
+                              className="hover:underline flex items-center space-x-0.5 cursor-pointer font-medium"
+                              title="Send manual human reply"
+                            >
+                              <Send className="w-2.5 h-2.5" />
+                              <span>ম্যানুয়াল রিপ্লাই</span>
+                            </button>
+
+                            <button
                               onClick={() => handleCopyText(log.id, log.aiReply)}
                               className="hover:underline flex items-center space-x-0.5 cursor-pointer"
                             >
@@ -641,6 +747,183 @@ export const WebhookEventLogs: React.FC<Props> = ({
                 className="max-h-[60vh] object-contain rounded"
               />
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Manual Message Delivery & Reply Modal */}
+      {isComposeOpen && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-100">
+          <div className="bg-white border border-slate-200 rounded-2xl max-w-lg w-full shadow-2xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-150">
+            {/* Modal Header */}
+            <div className="px-5 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white flex items-center justify-between">
+              <div className="flex items-center space-x-2.5">
+                <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center">
+                  <SendHorizontal className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold leading-tight">ম্যানুয়াল মেসেঞ্জার রিপ্লাই (Manual Outbound Message)</h3>
+                  <p className="text-[11px] text-blue-100 mt-0.5">
+                    সংযুক্ত ফেসবুক পেজ থেকে কাস্টমারকে সরাসরি মেসেঞ্জারে উত্তর পাঠান
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsComposeOpen(false)}
+                className="text-white/80 hover:text-white p-1 rounded-lg hover:bg-white/10 transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Page Connection Badge Banner */}
+            <div className="bg-slate-50 border-b border-slate-100 px-5 py-2.5 flex items-center justify-between text-xs">
+              <div className="flex items-center space-x-2">
+                <span className="text-slate-500 font-medium">কানেক্টেড পেজ:</span>
+                {fbConfig?.isConnected ? (
+                  <span className="font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full text-[11px] flex items-center space-x-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                    <span>{fbConfig.pageName || fbConfig.name || "Facebook Business Page"}</span>
+                  </span>
+                ) : (
+                  <span className="text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full text-[11px]">
+                    ⚠️ ফেসবুক পেজ ডিসকানেক্টেড (Social Integrations থেকে কানেক্ট করুন)
+                  </span>
+                )}
+              </div>
+              <span className="text-[10px] text-slate-400 font-mono">
+                Store: {currentTenant.shopName}
+              </span>
+            </div>
+
+            {/* Form */}
+            <form onSubmit={handleSendManualMessage} className="p-5 space-y-4">
+              {/* Platform Selector */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  প্ল্যাটফর্ম নির্বাচন করুন (Social Channel)
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setComposePlatform("facebook")}
+                    className={`py-2 px-3 rounded-lg border text-xs font-semibold flex items-center justify-center space-x-2 transition-all cursor-pointer ${
+                      composePlatform === "facebook"
+                        ? "bg-blue-50 border-blue-500 text-blue-700 shadow-xs"
+                        : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
+                    }`}
+                  >
+                    <span className="w-2 h-2 rounded-full bg-[#1877F2]"></span>
+                    <span>Facebook Messenger</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setComposePlatform("instagram")}
+                    className={`py-2 px-3 rounded-lg border text-xs font-semibold flex items-center justify-center space-x-2 transition-all cursor-pointer ${
+                      composePlatform === "instagram"
+                        ? "bg-rose-50 border-rose-500 text-rose-700 shadow-xs"
+                        : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
+                    }`}
+                  >
+                    <span className="w-2 h-2 rounded-full bg-[#E1306C]"></span>
+                    <span>Instagram Direct</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Recipient Input */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  প্রাপক / কাস্টমার (Recipient Name or PSID)
+                </label>
+                <input
+                  type="text"
+                  value={composeRecipient}
+                  onChange={(e) => setComposeRecipient(e.target.value)}
+                  placeholder="যেমন: Facebook Messenger User বা Customer ID (ঐচ্ছিক)"
+                  className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                />
+              </div>
+
+              {/* Message Input */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  আপনার রিপ্লাই বা মেসেজ (Message Body) *
+                </label>
+                <textarea
+                  rows={4}
+                  value={composeMessage}
+                  onChange={(e) => setComposeMessage(e.target.value)}
+                  placeholder="আপনার মেসেজ লিখুন... যেমন: প্রিয় গ্রাহক, আপনার অর্ডারটি কনফার্ম করা হয়েছে।"
+                  className="w-full bg-white border border-slate-300 rounded-lg p-3 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none leading-relaxed"
+                  required
+                />
+              </div>
+
+              {/* Status Notice */}
+              {composeStatus && (
+                <div
+                  className={`p-3 rounded-xl text-xs font-medium ${
+                    composeStatus.type === "success"
+                      ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
+                      : "bg-rose-50 text-rose-800 border border-rose-200"
+                  }`}
+                >
+                  {composeStatus.text}
+                </div>
+              )}
+
+              {/* Quick Template Chips */}
+              <div className="pt-1">
+                <div className="text-[11px] font-semibold text-slate-500 mb-1.5">দ্রুত টেমপ্লেট ক্লিক করুন:</div>
+                <div className="flex flex-wrap gap-1.5">
+                  {[
+                    "প্রিয় গ্রাহক, আপনার মেসেজের জন্য ধন্যবাদ! কীভাবে সাহায্য করতে পারি?",
+                    "আপনার অর্ডারটি সফলভাবে গ্রহণ করা হয়েছে। ক্যাশ অন ডেলিভারিতে ২-৩ দিনে পৌঁছে যাবে।",
+                    "আমাদের ডেলিভারি চার্জ: ঢাকার ভেতরে ৬০ টাকা, ঢাকার বাইরে ১২০ টাকা।",
+                    "আপনার ফোন নম্বর এবং পূর্ণাঙ্গ ঠিকানা পাঠালে অর্ডার কনফার্ম করে দিচ্ছি।",
+                  ].map((tpl, i) => (
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={() => setComposeMessage(tpl)}
+                      className="text-[10px] bg-slate-100 hover:bg-slate-200 text-slate-700 px-2 py-1 rounded-md border border-slate-200 transition-colors cursor-pointer text-left"
+                    >
+                      {tpl.slice(0, 32)}...
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Modal Action Buttons */}
+              <div className="flex items-center justify-end space-x-2 pt-2 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setIsComposeOpen(false)}
+                  disabled={isSendingManual}
+                  className="px-4 py-2 text-xs font-medium text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
+                >
+                  বাতিল (Cancel)
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSendingManual || !composeMessage.trim()}
+                  className="px-5 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-lg text-xs font-bold flex items-center space-x-2 shadow-xs transition-all cursor-pointer disabled:opacity-50"
+                >
+                  {isSendingManual ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      <span>মেসেজ পাঠানো হচ্ছে...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Send className="w-3.5 h-3.5" />
+                      <span>মেসেজ পাঠান (Send Direct)</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

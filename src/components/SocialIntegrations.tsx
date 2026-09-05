@@ -67,11 +67,11 @@ export const SocialIntegrations: React.FC<Props> = ({
   const [verificationSuccess, setVerificationSuccess] = useState<string | null>(null);
 
   // 1-Click Page Auto Discovery state
-  // User's official Meta App ID: 2241054986685445 (AI Shop Agent Ltd)
-  const DEFAULT_META_APP_ID = "2241054986685445";
+  // User's official Meta App ID: 1037142862491389 (Live Mode Activated)
+  const DEFAULT_META_APP_ID = "1037142862491389";
   const [appIdInput, setAppIdInput] = useState(() => {
     const saved = localStorage.getItem("meta_app_id");
-    if (!saved || saved === "2748431182224268" || saved === "1211245858746878" || saved.length < 10) {
+    if (!saved || saved === "2748431182224268" || saved === "1211245858746878" || saved === "2241054986685445" || saved.length < 10) {
       localStorage.setItem("meta_app_id", DEFAULT_META_APP_ID);
       return DEFAULT_META_APP_ID;
     }
@@ -109,7 +109,24 @@ export const SocialIntegrations: React.FC<Props> = ({
 
     window.addEventListener("message", handleAuthMessage);
 
-    // Check localStorage handoff periodically if opened in separate window
+    // BroadcastChannel for reliable cross-window / cross-frame handoff
+    let bc: BroadcastChannel | null = null;
+    try {
+      bc = new BroadcastChannel("fb_oauth_handoff_channel");
+      bc.onmessage = (event) => {
+        if (event.data && event.data.type === "FB_OAUTH_TOKEN" && event.data.accessToken) {
+          setIsSdkLoggingIn(false);
+          const token = event.data.accessToken;
+          setUserTokenInput(token);
+          setAccessToken(token);
+          handleFetchUserPages(token);
+        }
+      };
+    } catch (e) {
+      console.warn("BroadcastChannel not supported:", e);
+    }
+
+    // Check localStorage handoff periodically (polls every 350ms)
     const interval = setInterval(() => {
       const handoffToken = localStorage.getItem("fb_oauth_token_handoff");
       if (handoffToken) {
@@ -119,7 +136,7 @@ export const SocialIntegrations: React.FC<Props> = ({
         setAccessToken(handoffToken);
         handleFetchUserPages(handoffToken);
       }
-    }, 1000);
+    }, 350);
 
     if (typeof window !== "undefined" && !document.getElementById("facebook-jssdk")) {
       const script = document.createElement("script");
@@ -133,6 +150,7 @@ export const SocialIntegrations: React.FC<Props> = ({
 
     return () => {
       window.removeEventListener("message", handleAuthMessage);
+      if (bc) bc.close();
       clearInterval(interval);
     };
   }, []);
@@ -142,10 +160,10 @@ export const SocialIntegrations: React.FC<Props> = ({
     localStorage.setItem("meta_app_id", effectiveAppId);
     setIsSdkLoggingIn(true);
     setVerificationError(null);
+    setVerificationSuccess("ফেসবুকে লগইন সম্পন্ন হচ্ছে... পপ-আপে অনুমোদন সম্পন্ন করুন।");
 
-    const redirectUri = window.location.hostname.includes("onrender.com")
-      ? `${window.location.origin}/oauth-callback.html`
-      : "https://ai-shop-agent.onrender.com/oauth-callback.html";
+    // Use current origin so BroadcastChannel, localStorage, and postMessage are 100% same-origin
+    const redirectUri = `${window.location.origin}/oauth-callback.html`;
     const scopes = "pages_show_list,pages_messaging,pages_manage_metadata,public_profile";
     const oauthUrl = `https://www.facebook.com/v19.0/dialog/oauth?client_id=${effectiveAppId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent(scopes)}&response_type=token`;
 
@@ -169,10 +187,10 @@ export const SocialIntegrations: React.FC<Props> = ({
               setAccessToken(token);
               handleFetchUserPages(token);
             } else {
-              // If SDK login was dismissed, try direct popup window fallback
-              const popup = window.open(oauthUrl, "facebook_login", "width=600,height=750,top=100,left=100");
+              // Direct popup window fallback
+              const popup = window.open(oauthUrl, "facebook_login", "width=620,height=760,top=80,left=100");
               if (!popup) {
-                setVerificationError("পপ-আপ উইন্ডো ব্লক করা হয়েছে। অনুগ্রহ করে ব্রাউজারে পপ-আপ অনুমতি দিন অথবা নতুন ট্যাবে অ্যাপটি ওপেন করুন।");
+                setVerificationError("পপ-আপ উইন্ডো ব্লক করা হয়েছে। অনুগ্রহ করে ব্রাউজারের অ্যাড্রেস বারে পপ-আপ অনুমতি (Allow) দিন অথবা নতুন ট্যাবে অ্যাপটি ওপেন করুন।");
               }
             }
           },
@@ -188,10 +206,10 @@ export const SocialIntegrations: React.FC<Props> = ({
     }
 
     // Direct OAuth Popup fallback (works inside iframes & all browsers)
-    const popup = window.open(oauthUrl, "facebook_login", "width=600,height=750,top=100,left=100");
+    const popup = window.open(oauthUrl, "facebook_login", "width=620,height=760,top=80,left=100");
     if (!popup) {
       setIsSdkLoggingIn(false);
-      setVerificationError("পপ-আপ উইন্ডোটি ব্লক করা হয়েছে। ব্রাউজারের পপ-আপ অ্যালাও করুন বা নতুন ট্যাবে অ্যাপটি খুলুন।");
+      setVerificationError("পপ-আপ উইন্ডোটি ব্লক করা হয়েছে। ব্রাউজারের URL বারে পপ-আপ অ্যালাও করুন বা নতুন ট্যাবে অ্যাপটি খুলুন।");
     }
   };
 
@@ -236,7 +254,15 @@ export const SocialIntegrations: React.FC<Props> = ({
         setDiscoveredPages([]);
       } else if (Array.isArray(data.pages) && data.pages.length > 0) {
         setDiscoveredPages(data.pages);
-        setVerificationSuccess(`আপনার অ্যাকাউন্টের ${data.pages.length}টি ফেসবুক পেজ সফলভাবে পাওয়া গেছে! নিচের তালিকা থেকে আপনার পেজটি সিলেক্ট করুন।`);
+        if (data.pages.length === 1) {
+          const onlyPage = data.pages[0];
+          setVerificationSuccess(`আপনার ফেসবুক পেজ "${onlyPage.name}" পাওয়া গেছে! স্বয়ংক্রিয়ভাবে কানেক্ট করা হচ্ছে...`);
+          setPageId(onlyPage.id);
+          setAccessToken(onlyPage.accessToken);
+          await executeVerification(onlyPage.id, onlyPage.accessToken, verifyToken);
+        } else {
+          setVerificationSuccess(`আপনার অ্যাকাউন্টের ${data.pages.length}টি ফেসবুক পেজ পাওয়া গেছে! নিচে থেকে আপনার পেজটি নির্বাচন করে কানেক্ট করুন।`);
+        }
       } else {
         setVerificationError("এই টোকেনের অধীনে কোনো ফেসবুক পেজ পাওয়া যায়নি। নিশ্চিত করুন আপনার আইডিতে পেজ অ্যাডমিন রোল রয়েছে।");
         setDiscoveredPages([]);
@@ -647,58 +673,83 @@ export const SocialIntegrations: React.FC<Props> = ({
         {/* Form Body */}
         <div className="p-6">
           {/* Active Connection & Live Diagnostics Status Card */}
-          <div className="mb-6 p-4 rounded-xl border bg-white shadow-xs">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
-              <div className="flex items-center space-x-3">
-                <div className={`w-3.5 h-3.5 rounded-full ${selectedConfig.isConnected ? "bg-emerald-500 animate-pulse" : "bg-slate-300"}`} />
+          <div className={`mb-6 p-4 sm:p-5 rounded-2xl border transition-all ${
+            selectedConfig.isConnected
+              ? "bg-gradient-to-r from-emerald-50 via-teal-50/40 to-white border-emerald-300 shadow-sm"
+              : "bg-white border-slate-200 shadow-xs"
+          }`}>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="flex items-center space-x-3.5">
+                <div className={`w-11 h-11 rounded-xl flex items-center justify-center font-bold text-lg shrink-0 shadow-xs ${
+                  selectedConfig.isConnected
+                    ? "bg-emerald-600 text-white ring-4 ring-emerald-100"
+                    : "bg-slate-100 text-slate-400"
+                }`}>
+                  {selectedConfig.isConnected ? <CheckCircle2 className="w-6 h-6" /> : <Building2 className="w-5 h-5" />}
+                </div>
+
                 <div>
-                  <div className="text-xs font-bold text-slate-900 flex items-center space-x-2">
-                    <span>কানেকশন স্ট্যাটাস:</span>
+                  <div className="flex items-center space-x-2">
+                    <h4 className="text-sm sm:text-base font-extrabold text-slate-900">
+                      {selectedConfig.isConnected ? (selectedConfig.pageName || selectedConfig.name) : "ফেসবুক পেজ সংযুক্ত নেই"}
+                    </h4>
                     {selectedConfig.isConnected ? (
-                      <span className="text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded text-[11px] font-semibold">
-                        🟢 লাইভ সংযুক্ত (Connected)
+                      <span className="text-emerald-700 bg-emerald-100/80 border border-emerald-300 px-2.5 py-0.5 rounded-full text-[11px] font-bold tracking-wide flex items-center space-x-1">
+                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping mr-1" />
+                        🟢 LIVE CONNECTED
                       </span>
                     ) : (
-                      <span className="text-slate-600 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded text-[11px] font-medium">
-                        ⚪ ডিসকানেক্টেড (Not Connected)
+                      <span className="text-slate-600 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-full text-[11px] font-medium">
+                        ⚪ Not Connected
                       </span>
                     )}
                   </div>
-                  <div className="text-[11px] text-slate-500 mt-0.5">
+
+                  <div className="text-xs text-slate-600 mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
                     {selectedConfig.isConnected ? (
-                      <span>পেজের নাম: <strong className="text-slate-800">{selectedConfig.pageName || selectedConfig.name}</strong> • ID: <span className="font-mono">{selectedConfig.pageId}</span></span>
+                      <>
+                        <span>পেজ আইডি: <strong className="font-mono text-slate-900 bg-white px-1.5 py-0.5 rounded border border-slate-200">{selectedConfig.pageId}</strong></span>
+                        <span>•</span>
+                        <span className="text-emerald-700 font-semibold">মেটা ওয়েবহুক ও মেসেজিং সক্রিয়</span>
+                        {selectedConfig.verifiedAt && (
+                          <>
+                            <span>•</span>
+                            <span className="text-slate-400">ভেরিফাইড: {new Date(selectedConfig.verifiedAt).toLocaleTimeString()}</span>
+                          </>
+                        )}
+                      </>
                     ) : (
-                      <span>কোনো পেজ বর্তমানে কানেক্ট করা নেই। নিচের ১-ক্লিক অপশন দিয়ে কানেক্ট করুন।</span>
+                      <span className="text-slate-500">নিচের "Continue with Facebook" বাটনে চাপ দিয়ে লগইন করলেই স্বয়ংক্রিয়ভাবে পেজ কানেক্ট হবে।</span>
                     )}
                   </div>
                 </div>
               </div>
 
               {/* Action Buttons for Connected Page */}
-              {selectedConfig.isConnected && (
+              {selectedConfig.isConnected ? (
                 <div className="flex items-center space-x-2 shrink-0">
                   <button
                     type="button"
                     id="btn-run-diagnostics"
                     disabled={isVerifying}
                     onClick={handleRunLiveDiagnostics}
-                    className="bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 text-xs font-semibold px-3 py-1.5 rounded-lg flex items-center space-x-1.5 transition-all cursor-pointer disabled:opacity-50"
+                    className="bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 text-xs font-semibold px-3 py-2 rounded-xl flex items-center space-x-1.5 shadow-xs transition-all cursor-pointer disabled:opacity-50"
                   >
-                    {isVerifying ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Zap className="w-3.5 h-3.5" />}
-                    <span>লাইভ ডায়াগনস্টিক টেস্ট</span>
+                    {isVerifying ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Zap className="w-3.5 h-3.5 text-amber-500" />}
+                    <span>ডায়াগনস্টিক টেস্ট</span>
                   </button>
                   <button
                     type="button"
                     id="btn-disconnect-social-page"
                     disabled={isVerifying}
                     onClick={handleDisconnect}
-                    className="bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 text-xs font-semibold px-3 py-1.5 rounded-lg flex items-center space-x-1.5 transition-all cursor-pointer disabled:opacity-50"
+                    className="bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 text-xs font-semibold px-3 py-2 rounded-xl flex items-center space-x-1.5 transition-all cursor-pointer disabled:opacity-50"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
-                    <span>ডিসকানেক্ট করুন</span>
+                    <span>ডিসকানেক্ট</span>
                   </button>
                 </div>
-              )}
+              ) : null}
             </div>
 
             {/* Diagnostics result banner */}
@@ -733,7 +784,7 @@ export const SocialIntegrations: React.FC<Props> = ({
                 </div>
 
                 {/* Direct 1-Click Facebook Popup Login Button */}
-                <div className="flex flex-col items-end gap-1 shrink-0">
+                <div className="flex flex-col items-end gap-1.5 shrink-0">
                   <button
                     type="button"
                     id="btn-fb-sdk-login"
@@ -749,6 +800,34 @@ export const SocialIntegrations: React.FC<Props> = ({
                       </svg>
                     )}
                     <span>{isSdkLoggingIn ? "ফেসবুকে কানেক্ট হচ্ছে..." : "🔵 Continue with Facebook"}</span>
+                  </button>
+                  <span className="text-[10px] text-slate-500 font-medium">
+                    লগইন শেষে পেজ স্বয়ংক্রিয়ভাবে কানেক্ট হবে
+                  </span>
+                </div>
+              </div>
+
+              {/* Meta Redirect URI Helper Bar for whitelisting */}
+              <div className="p-2.5 bg-blue-50/70 border border-blue-200/80 rounded-lg flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-[11px]">
+                <div className="text-slate-700">
+                  <span className="font-semibold text-blue-900">মেটা অ্যাপ সেটিংস:</span> যদি "URL blocked" দেখায়, মেটা অ্যাপের <em>Client OAuth settings &gt; Valid OAuth Redirect URIs</em> বক্সে এই URL-টি যোগ করুন:
+                </div>
+                <div className="flex items-center space-x-1.5 shrink-0">
+                  <code className="font-mono text-[10px] bg-white text-slate-800 px-2 py-1 rounded border border-blue-200 max-w-[240px] truncate">
+                    {typeof window !== "undefined" ? `${window.location.origin}/oauth-callback.html` : "/oauth-callback.html"}
+                  </code>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (typeof window !== "undefined") {
+                        navigator.clipboard.writeText(`${window.location.origin}/oauth-callback.html`);
+                        setVerificationSuccess("OAuth Redirect URI ক্লিপবোর্ডে কপি করা হয়েছে!");
+                      }
+                    }}
+                    className="bg-white hover:bg-blue-50 text-blue-700 border border-blue-300 font-semibold px-2 py-1 rounded text-[10px] flex items-center space-x-1 cursor-pointer transition-colors shadow-2xs"
+                  >
+                    <Copy className="w-3 h-3" />
+                    <span>কপি</span>
                   </button>
                 </div>
               </div>

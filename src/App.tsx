@@ -95,6 +95,59 @@ export default function App() {
 
   // Local storage effects - Notification syncing removed completely to save client storage space
 
+  // Firestore Real-Time Listener for Current Tenant Social Configs (Preserves Facebook page connection across tab switches & reloads)
+  useEffect(() => {
+    if (!currentTenant?.id) return;
+    try {
+      const userRef = doc(db, "users", currentTenant.id);
+      const unsubscribe = onSnapshot(
+        userRef,
+        (docSnap) => {
+          if (docSnap.exists()) {
+            const data = docSnap.data();
+            const platforms = ["facebook", "instagram", "whatsapp", "tiktok"] as const;
+            let hasAnySocial = false;
+            const currentList = tenantSocialConfigs[currentTenant.id] || INITIAL_SOCIAL_CONFIGS;
+            const updatedList = currentList.map((cfg) => {
+              const cloudCfg = data[`social_config_${cfg.platform}`];
+              if (cloudCfg) {
+                hasAnySocial = true;
+                return {
+                  ...cfg,
+                  isConnected: cloudCfg.isConnected !== undefined ? Boolean(cloudCfg.isConnected) : cfg.isConnected,
+                  pageId: cloudCfg.pageId || cfg.pageId,
+                  accessToken: cloudCfg.accessToken || cfg.accessToken,
+                  pageName: cloudCfg.pageName || cfg.pageName,
+                  webhookUrl: cloudCfg.webhookUrl || cfg.webhookUrl,
+                  verifyToken: cloudCfg.verifyToken || cfg.verifyToken,
+                  lastSync: cloudCfg.lastSync || cfg.lastSync,
+                };
+              }
+              return cfg;
+            });
+
+            if (hasAnySocial) {
+              setTenantSocialConfigs((prev) => ({
+                ...prev,
+                [currentTenant.id]: updatedList,
+              }));
+              localStorage.setItem("shop_agent_social_configs", JSON.stringify({
+                ...tenantSocialConfigs,
+                [currentTenant.id]: updatedList,
+              }));
+            }
+          }
+        },
+        (error) => {
+          console.debug("[Firestore Social Config Listener] Offline/Local mode:", error.message);
+        }
+      );
+      return () => unsubscribe();
+    } catch (err) {
+      console.debug("[Firestore Social Init] Fallback to local storage:", err);
+    }
+  }, [currentTenant?.id]);
+
   // Firestore Real-Time Listener for Current Tenant Products
   useEffect(() => {
     if (!currentTenant?.id) return;
@@ -1072,12 +1125,19 @@ export default function App() {
               <WebhookEventLogs
                 logs={currentLogs}
                 currentTenant={currentTenant}
+                socialConfigs={currentSocialConfigs}
                 onSimulateIncomingWebhook={handleSimulateIncomingWebhook}
                 onFetchCloudLogs={() => handleFetchChatbotRepliesFromCloud(true)}
                 isFetchingLogs={isFetchingLogs}
                 lastLogsFetchedAt={lastLogsFetchedAt}
                 onDeleteLog={handleDeleteLog}
                 onClearDemoLogs={handleClearDemoLogs}
+                onManualMessageSent={(newLog) => {
+                  setTenantLogs((prev) => ({
+                    ...prev,
+                    [currentTenant.id]: [newLog, ...(prev[currentTenant.id] || [])],
+                  }));
+                }}
               />
             )}
           </>
