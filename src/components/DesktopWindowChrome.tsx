@@ -80,7 +80,10 @@ export const DesktopWindowChrome: React.FC<Props> = ({
             <div className="w-7 h-7 rounded-lg bg-white border border-[#CBD5E1] p-0.5 flex items-center justify-center shadow-xs overflow-hidden shrink-0">
               <img src="/logo.jpg" alt="Business Logo" className="w-full h-full object-contain rounded-md" referrerPolicy="no-referrer" />
             </div>
-            <span>AI Shop Agent Suite</span>
+            <div className="flex flex-col">
+              <span className="leading-tight">AI Shop Agent Suite</span>
+              <span className="text-[10px] text-[#64748B] font-normal">Legal Entity: MD. RIFAT HOSSAIN</span>
+            </div>
           </div>
         </div>
 

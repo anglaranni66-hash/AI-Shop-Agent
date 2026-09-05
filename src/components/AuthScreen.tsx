@@ -106,6 +106,9 @@ export const AuthScreen: React.FC<Props> = ({ onLogin, tenants, onRegister }) =>
             <img src="/logo.jpg" alt="Business Logo" className="w-full h-full object-contain rounded-xl" referrerPolicy="no-referrer" />
           </div>
           <h1 className="text-xl font-bold text-[#0F172A] tracking-tight">AI Shop Agent Suite</h1>
+          <p className="text-xs text-[#64748B] mt-1 font-medium">
+            Official E-Commerce Platform • Operated by <strong className="text-[#334155]">MD. RIFAT HOSSAIN</strong>
+          </p>
         </div>
 
         {/* Mode Switcher */}
