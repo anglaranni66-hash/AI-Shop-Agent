@@ -1272,7 +1272,8 @@ app.get(["/privacy-policy", "/privacy", "/privacy-policy.html", "/privacy.html"]
       <strong>Legal Business Name:</strong> MD. RIFAT HOSSAIN<br>
       <strong>Operating Brand:</strong> AI Shop Agent<br>
       <strong>Registered Address:</strong> Dhawrah, Shailkupa, Jhenaidah, Khulna - 7320, Bangladesh<br>
-      <strong>Official Contact:</strong> anglaranni66@gmail.com
+      <strong>Official Contact Email:</strong> fefsdgxdfbx@gmail.com (or anglaranni66@gmail.com)<br>
+      <strong>Official Contact Phone:</strong> +880 1761576600 (01761576600)
     </div>
 
     <p>AI Shop Agent ("we", "our", or "us"), legally operated by <strong>MD. RIFAT HOSSAIN</strong>, provides conversational AI and automated customer sales support services for Facebook Pages, WhatsApp Business, and Instagram accounts.</p>
@@ -1291,7 +1292,16 @@ app.get(["/privacy-policy", "/privacy", "/privacy-policy.html", "/privacy.html"]
     <p>You can request complete deletion of your page data and message history at any time by disconnecting your channel in the application settings or visiting our Data Deletion page.</p>
 
     <h2>4. Contact Us</h2>
-    <p>For any privacy concerns, contact <strong>MD. RIFAT HOSSAIN</strong> at <strong>anglaranni66@gmail.com</strong>.</p>
+    <p>For any privacy concerns, contact <strong>MD. RIFAT HOSSAIN</strong> at <strong>fefsdgxdfbx@gmail.com</strong> or call <strong>+880 1761576600</strong>.</p>
+    
+    <div style="margin-top: 25px; padding-top: 15px; border-top: 1px solid #e2e8f0; font-size: 13px; text-align: center;">
+      <p style="margin-bottom: 6px; font-weight: 600;">© 2026 MD. RIFAT HOSSAIN. All rights reserved.</p>
+      <a href="/" style="color:#0284c7; text-decoration:none; margin:0 6px;">Home</a> |
+      <a href="/about-us.html" style="color:#0284c7; text-decoration:none; margin:0 6px;">About Us</a> |
+      <a href="/contact.html" style="color:#0284c7; text-decoration:none; margin:0 6px;">Contact</a> |
+      <a href="/privacy-policy.html" style="color:#0284c7; text-decoration:none; margin:0 6px;">Privacy Policy</a> |
+      <a href="/terms-of-service.html" style="color:#0284c7; text-decoration:none; margin:0 6px;">Terms of Service</a>
+    </div>
   </div>
 </body>
 </html>`);
@@ -1326,7 +1336,8 @@ app.get(["/terms", "/terms-of-service", "/terms.html", "/terms-of-service.html"]
       <strong>Legal Business Name:</strong> MD. RIFAT HOSSAIN<br>
       <strong>Operating Brand:</strong> AI Shop Agent<br>
       <strong>Registered Address:</strong> Dhawrah, Shailkupa, Jhenaidah, Khulna - 7320, Bangladesh<br>
-      <strong>Official Contact:</strong> anglaranni66@gmail.com
+      <strong>Official Contact Email:</strong> fefsdgxdfbx@gmail.com<br>
+      <strong>Official Contact Phone:</strong> +880 1761576600 (01761576600)
     </div>
 
     <p>By connecting your Meta business assets to AI Shop Agent (operated by <strong>MD. RIFAT HOSSAIN</strong>), you agree to comply with Meta's Commercial Terms and use our AI automation in good faith for customer engagement and order fulfillment.</p>
@@ -1336,6 +1347,156 @@ app.get(["/terms", "/terms-of-service", "/terms.html", "/terms-of-service.html"]
     
     <h2>2. Ownership</h2>
     <p>All intellectual property and platform assets belong to <strong>MD. RIFAT HOSSAIN</strong>.</p>
+
+    <div style="margin-top: 25px; padding-top: 15px; border-top: 1px solid #e2e8f0; font-size: 13px; text-align: center;">
+      <p style="margin-bottom: 6px; font-weight: 600;">© 2026 MD. RIFAT HOSSAIN. All rights reserved.</p>
+      <a href="/" style="color:#0284c7; text-decoration:none; margin:0 6px;">Home</a> |
+      <a href="/about-us.html" style="color:#0284c7; text-decoration:none; margin:0 6px;">About Us</a> |
+      <a href="/contact.html" style="color:#0284c7; text-decoration:none; margin:0 6px;">Contact</a> |
+      <a href="/privacy-policy.html" style="color:#0284c7; text-decoration:none; margin:0 6px;">Privacy Policy</a> |
+      <a href="/terms-of-service.html" style="color:#0284c7; text-decoration:none; margin:0 6px;">Terms of Service</a>
+    </div>
+  </div>
+</body>
+</html>`);
+});
+
+app.get(["/about", "/about-us", "/about.html", "/about-us.html"], (req, res) => {
+  res.send(`<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>About Us - AI Shop Agent (MD. RIFAT HOSSAIN)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="facebook-domain-verification" content="pcii55wnloh9batx8jaqk0u1zmy0zf" />
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; line-height: 1.6; padding: 32px 20px; max-width: 800px; margin: auto; color: #1e293b; background: #f8fafc; }
+    .container { background: #ffffff; padding: 40px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+    h1 { color: #0f172a; border-bottom: 2px solid #e2e8f0; padding-bottom: 12px; margin-top: 0; }
+    h2 { color: #1e293b; margin-top: 24px; }
+    p, li { color: #475569; font-size: 15px; }
+    .badge { display: inline-block; background: #e0f2fe; color: #0369a1; padding: 4px 12px; border-radius: 999px; font-weight: 600; font-size: 12px; margin-bottom: 16px; }
+    .legal-card { background: #f8fafc; border: 1px solid #cbd5e1; border-left: 5px solid #0284c7; padding: 20px; margin: 24px 0; border-radius: 0 10px 10px 0; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 12px; }
+    @media (max-width: 600px) { .grid { grid-template-columns: 1fr; } }
+    .item { font-size: 14px; }
+    .label { font-size: 12px; font-weight: bold; color: #64748b; text-transform: uppercase; }
+    .value { font-weight: 600; color: #0f172a; font-size: 15px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="badge">Official Business Profile</div>
+    <h1>About AI Shop Agent</h1>
+    <p>AI Shop Agent is an enterprise conversational AI software suite providing automated sales assistance, inventory vector lookup, and social messaging integrations across Facebook Messenger, WhatsApp Business, and Instagram.</p>
+    
+    <div class="legal-card">
+      <h3 style="margin-top:0; color:#0f172a; font-size:18px;">Official Ownership &amp; Legal Verification</h3>
+      <div class="grid">
+        <div class="item">
+          <div class="label">Legal Business Name</div>
+          <div class="value">MD. RIFAT HOSSAIN</div>
+        </div>
+        <div class="item">
+          <div class="label">Trade / Brand Name</div>
+          <div class="value">AI Shop Agent</div>
+        </div>
+        <div class="item">
+          <div class="label">Official Contact Email</div>
+          <div class="value">fefsdgxdfbx@gmail.com</div>
+        </div>
+        <div class="item">
+          <div class="label">Official Contact Phone</div>
+          <div class="value">+880 1761576600 (01761576600)</div>
+        </div>
+      </div>
+      <div style="margin-top: 16px; padding-top: 12px; border-top: 1px dashed #cbd5e1;">
+        <div class="label">Registered Physical Address</div>
+        <div class="value">Dhawrah, Shailkupa, Jhenaidah, Khulna - 7320, Bangladesh</div>
+      </div>
+    </div>
+
+    <h2>Contact Person</h2>
+    <p>For inquiries, please contact our business proprietor <strong>MD. RIFAT HOSSAIN</strong> directly via phone at <strong>01761576600</strong> or via email at <strong>fefsdgxdfbx@gmail.com</strong>.</p>
+    
+    <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e2e8f0; font-size: 13px; text-align: center;">
+      <p style="margin-bottom:8px; font-weight:600; color:#475569;">© 2026 MD. RIFAT HOSSAIN. All rights reserved.</p>
+      <a href="/" style="color:#0284c7; text-decoration:none; margin:0 6px;">Home</a> |
+      <a href="/about-us.html" style="color:#0284c7; text-decoration:none; margin:0 6px;">About Us</a> |
+      <a href="/contact.html" style="color:#0284c7; text-decoration:none; margin:0 6px;">Contact Us</a> |
+      <a href="/privacy-policy.html" style="color:#0284c7; text-decoration:none; margin:0 6px;">Privacy Policy</a> |
+      <a href="/terms-of-service.html" style="color:#0284c7; text-decoration:none; margin:0 6px;">Terms of Service</a>
+    </div>
+  </div>
+</body>
+</html>`);
+});
+
+app.get(["/contact", "/contact-us", "/contact.html", "/contact-us.html"], (req, res) => {
+  res.send(`<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Contact Us - AI Shop Agent (MD. RIFAT HOSSAIN)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="facebook-domain-verification" content="pcii55wnloh9batx8jaqk0u1zmy0zf" />
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; line-height: 1.6; padding: 32px 20px; max-width: 800px; margin: auto; color: #1e293b; background: #f8fafc; }
+    .container { background: #ffffff; padding: 40px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+    h1 { color: #0f172a; border-bottom: 2px solid #e2e8f0; padding-bottom: 12px; margin-top: 0; }
+    h2 { color: #1e293b; margin-top: 24px; }
+    p, li { color: #475569; font-size: 15px; }
+    .badge { display: inline-block; background: #e0f2fe; color: #0369a1; padding: 4px 12px; border-radius: 999px; font-weight: 600; font-size: 12px; margin-bottom: 16px; }
+    .contact-card { background: #f8fafc; border: 1px solid #cbd5e1; border-left: 5px solid #0284c7; padding: 20px; margin: 24px 0; border-radius: 0 10px 10px 0; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 12px; }
+    @media (max-width: 600px) { .grid { grid-template-columns: 1fr; } }
+    .item { font-size: 14px; }
+    .label { font-size: 12px; font-weight: bold; color: #64748b; text-transform: uppercase; }
+    .value { font-weight: 600; color: #0f172a; font-size: 15px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="badge">Official Contact &amp; Support</div>
+    <h1>Contact Information</h1>
+    
+    <div class="contact-card">
+      <h3 style="margin-top:0; color:#0f172a; font-size:18px;">Business &amp; Legal Entity Details</h3>
+      <div class="grid">
+        <div class="item">
+          <div class="label">Legal Business Name</div>
+          <div class="value">MD. RIFAT HOSSAIN</div>
+        </div>
+        <div class="item">
+          <div class="label">Brand / Platform Name</div>
+          <div class="value">AI Shop Agent</div>
+        </div>
+        <div class="item">
+          <div class="label">Official Email</div>
+          <div class="value"><a href="mailto:fefsdgxdfbx@gmail.com" style="color:#0284c7; text-decoration:none;">fefsdgxdfbx@gmail.com</a></div>
+        </div>
+        <div class="item">
+          <div class="label">Direct Phone / Hotline</div>
+          <div class="value"><a href="tel:+8801761576600" style="color:#0284c7; text-decoration:none;">01761576600 (+880 1761576600)</a></div>
+        </div>
+      </div>
+      <div style="margin-top: 16px; padding-top: 12px; border-top: 1px dashed #cbd5e1;">
+        <div class="label">Physical Registered Address</div>
+        <div class="value">Dhawrah, Shailkupa, Jhenaidah, Khulna - 7320, Bangladesh</div>
+      </div>
+    </div>
+
+    <h2>Direct Developer Support</h2>
+    <p>For technical inquiries regarding our Meta app integrations, webhook subscriptions, and AI catalog responses, you can directly reach out to our legal proprietor <strong>MD. RIFAT HOSSAIN</strong> at <strong>fefsdgxdfbx@gmail.com</strong> or call <strong>01761576600</strong>.</p>
+
+    <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e2e8f0; font-size: 13px; text-align: center;">
+      <p style="margin-bottom:8px; font-weight:600; color:#475569;">© 2026 MD. RIFAT HOSSAIN. All rights reserved.</p>
+      <a href="/" style="color:#0284c7; text-decoration:none; margin:0 6px;">Home</a> |
+      <a href="/about-us.html" style="color:#0284c7; text-decoration:none; margin:0 6px;">About Us</a> |
+      <a href="/contact.html" style="color:#0284c7; text-decoration:none; margin:0 6px;">Contact Us</a> |
+      <a href="/privacy-policy.html" style="color:#0284c7; text-decoration:none; margin:0 6px;">Privacy Policy</a> |
+      <a href="/terms-of-service.html" style="color:#0284c7; text-decoration:none; margin:0 6px;">Terms of Service</a>
+    </div>
   </div>
 </body>
 </html>`);
@@ -1363,14 +1524,15 @@ app.get(["/data-deletion", "/data-deletion-instructions", "/data-deletion.html"]
     <h1>User Data Deletion Instructions</h1>
     <div class="legal-box">
       <strong>Service Provider:</strong> MD. RIFAT HOSSAIN (AI Shop Agent)<br>
-      <strong>Contact:</strong> anglaranni66@gmail.com
+      <strong>Contact Email:</strong> fefsdgxdfbx@gmail.com<br>
+      <strong>Contact Phone:</strong> 01761576600
     </div>
     <p>According to Meta Platform rules, you can remove your activities from our application at any time:</p>
     <ol>
       <li>Go to your Facebook Account's <strong>Settings & Privacy > Settings</strong>.</li>
       <li>Click on <strong>Business Integrations</strong> or <strong>Apps and Websites</strong>.</li>
       <li>Find <strong>AI Shop Agent</strong> and click <strong>Remove</strong>.</li>
-      <li>To request full purge from our servers, simply email <strong>anglaranni66@gmail.com</strong> with your Page ID.</li>
+      <li>To request full purge from our servers, simply email <strong>fefsdgxdfbx@gmail.com</strong> with your Page ID.</li>
     </ol>
   </div>
 </body>

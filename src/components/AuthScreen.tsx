@@ -361,14 +361,25 @@ export const AuthScreen: React.FC<Props> = ({ onLogin, tenants, onRegister }) =>
         )}
 
         {/* Legal Business Footer for Meta Compliance */}
-        <div className="mt-6 pt-4 border-t border-[#E2E8F0] text-center text-[11px] text-[#64748B] space-y-1">
-          <p className="font-medium text-[#334155]">
-            Operated by <strong>MD. RIFAT HOSSAIN</strong> (Brand: AI Shop Agent)
+        <div className="mt-6 pt-4 border-t border-[#E2E8F0] text-center text-[11px] text-[#64748B] space-y-1.5">
+          <p className="font-semibold text-[#1E293B]">
+            Legal Entity: <strong>MD. RIFAT HOSSAIN</strong> (Brand: AI Shop Agent)
           </p>
-          <p className="text-[10px] text-[#94A3B8]">
+          <p className="text-[10px] text-[#64748B]">
             Address: Dhawrah, Shailkupa, Jhenaidah, Khulna - 7320, Bangladesh
           </p>
-          <div className="flex items-center justify-center space-x-3 pt-1 text-[11px] text-blue-600">
+          <p className="text-[10px] text-[#64748B]">
+            Official Email: <a href="mailto:fefsdgxdfbx@gmail.com" className="text-blue-600 font-medium hover:underline">fefsdgxdfbx@gmail.com</a> • Phone: <a href="tel:+8801761576600" className="text-blue-600 font-medium hover:underline">01761576600</a>
+          </p>
+          <div className="flex flex-wrap items-center justify-center gap-x-2.5 gap-y-1 pt-1 text-[11px] text-blue-600 font-medium">
+            <a href="/about-us.html" target="_blank" rel="noopener noreferrer" className="hover:underline">
+              About Us
+            </a>
+            <span>•</span>
+            <a href="/contact.html" target="_blank" rel="noopener noreferrer" className="hover:underline">
+              Contact
+            </a>
+            <span>•</span>
             <a href="/privacy-policy.html" target="_blank" rel="noopener noreferrer" className="hover:underline">
               Privacy Policy
             </a>
@@ -381,6 +392,9 @@ export const AuthScreen: React.FC<Props> = ({ onLogin, tenants, onRegister }) =>
               Data Deletion
             </a>
           </div>
+          <p className="text-[10px] text-[#94A3B8] pt-1">
+            © 2026 MD. RIFAT HOSSAIN. All rights reserved.
+          </p>
         </div>
       </div>
     </div>

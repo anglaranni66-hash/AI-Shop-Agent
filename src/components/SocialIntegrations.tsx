@@ -1223,16 +1223,26 @@ export const SocialIntegrations: React.FC<Props> = ({
           {/* Legal Business Footer for Meta Verification */}
           <div className="mt-6 pt-4 border-t border-[#E2E8F0] flex flex-col md:flex-row items-center justify-between text-[11px] text-[#64748B] gap-2">
             <div>
-              Legal Entity: <span className="font-semibold text-[#1E293B]">MD. RIFAT HOSSAIN</span> (AI Shop Agent) • Dhawrah, Shailkupa, Jhenaidah - 7320
+              Legal Entity: <span className="font-semibold text-[#1E293B]">MD. RIFAT HOSSAIN</span> (AI Shop Agent) • Dhawrah, Shailkupa, Jhenaidah - 7320 • Phone: <a href="tel:+8801761576600" className="text-blue-600 font-medium hover:underline">01761576600</a>
             </div>
-            <div className="flex items-center space-x-3 text-blue-600 font-medium">
+            <div className="flex flex-wrap items-center space-x-2.5 text-blue-600 font-medium">
+              <a href="/about-us.html" target="_blank" rel="noopener noreferrer" className="hover:underline flex items-center space-x-1">
+                <span>About Us</span>
+                <ExternalLink className="w-3 h-3" />
+              </a>
+              <span>•</span>
+              <a href="/contact.html" target="_blank" rel="noopener noreferrer" className="hover:underline flex items-center space-x-1">
+                <span>Contact</span>
+                <ExternalLink className="w-3 h-3" />
+              </a>
+              <span>•</span>
               <a href="/privacy-policy.html" target="_blank" rel="noopener noreferrer" className="hover:underline flex items-center space-x-1">
-                <span>Privacy Policy</span>
+                <span>Privacy</span>
                 <ExternalLink className="w-3 h-3" />
               </a>
               <span>•</span>
               <a href="/terms-of-service.html" target="_blank" rel="noopener noreferrer" className="hover:underline flex items-center space-x-1">
-                <span>Terms of Service</span>
+                <span>Terms</span>
                 <ExternalLink className="w-3 h-3" />
               </a>
             </div>
